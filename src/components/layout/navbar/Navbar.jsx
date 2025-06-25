@@ -110,7 +110,7 @@ function Navbar(props) {
           <Link to="/" style={{ color: "black" }}>
             <img
               style={{ width: 100, padding: "5px", borderRadius: "10px" }}
-              src="https://firebasestorage.googleapis.com/v0/b/pagina-web-b1102.firebasestorage.app/o/logo-gm-dev.png?alt=media&token=eb911fb1-e48d-47aa-a213-7554018bcdad"
+              src="https://res.cloudinary.com/ddmvo0ert/image/upload/v1750732501/kaizen/logo-kaizen-2.png"
               alt=""
             />
           </Link>
@@ -138,7 +138,7 @@ function Navbar(props) {
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
-              backgroundColor: "#27548A",
+              backgroundColor: "#5CB338",
             },
           }}
         >

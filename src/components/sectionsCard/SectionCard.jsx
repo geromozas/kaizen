@@ -1,22 +1,20 @@
 import Card from "@mui/material/Card";
 import CardActions from "@mui/material/CardActions";
 import CardContent from "@mui/material/CardContent";
-import CardMedia from "@mui/material/CardMedia";
+// import CardMedia from "@mui/material/CardMedia";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import { Link } from "react-router-dom";
 
-export default function ProductCard({
-  image,
+export default function SectionCard({
+  // image,
   title,
-  // description,
-  unit_price,
-  //   category,
+  description,
   id,
 }) {
   return (
     <Card
-      className="productCard"
+      className="sectionCard"
       sx={{
         width: {
           xs: 275,
@@ -32,11 +30,11 @@ export default function ProductCard({
         },
       }}
     >
-      <CardMedia
+      {/* <CardMedia
         sx={{ height: 200 }}
         image={image}
         title="imagen del producto"
-      />
+      /> */}
 
       <CardContent>
         <Typography
@@ -48,31 +46,19 @@ export default function ProductCard({
         >
           {title}
         </Typography>
-        {/* <Typography
-          variant="body2"
-          sx={{ color: "text.secondary", height: 110 }}
-          style={{
-            display: "flex",
-            alignItems: "start",
-            marginTop: 50,
-            marginBottom: 60,
-          }}
-        >
-          {description}
-        </Typography> */}
         <Typography
           gutterBottom
           variant="h5"
           component="div"
-          sx={{ height: 10 }}
+          sx={{ height: 50 }}
         >
-          ${unit_price}
+          {description}
         </Typography>
       </CardContent>
       <CardActions sx={{ padding: 2 }}>
         <Link to={`/itemDetail/${id}`}>
           <Button size="small" color="secondary" variant="contained">
-            Ver Detalle
+            Ver Alumnos/Pacientes
           </Button>
         </Link>
       </CardActions>

@@ -1,6 +1,8 @@
 import HomeIcon from "@mui/icons-material/Home";
-import StoreIcon from "@mui/icons-material/Store";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import GroupIcon from "@mui/icons-material/Group";
+import PaymentIcon from "@mui/icons-material/Payment";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 
 export const menuItems = [
   {
@@ -10,15 +12,27 @@ export const menuItems = [
     Icon: HomeIcon,
   },
   {
-    id: "aboutMe",
-    path: "/about-me",
-    title: "Sobre nosotros",
+    id: "clients",
+    path: "/clients",
+    title: "Alumnos / Pacientes",
     Icon: GroupIcon,
   },
   {
-    id: "products",
-    path: "/shop",
-    title: "Productos",
-    Icon: StoreIcon,
+    id: "calendar",
+    path: "/calendar",
+    title: "Calendario / Turnos",
+    Icon: CalendarMonthIcon,
+  },
+  {
+    id: "payments",
+    path: "/payments",
+    title: "Pagos",
+    Icon: PaymentIcon,
+  },
+  {
+    id: "report",
+    path: "/report",
+    title: "Reportes",
+    Icon: AssessmentIcon,
   },
 ];

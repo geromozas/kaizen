@@ -1,0 +1,16 @@
+.homeTitle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 30px;
+  /* margin-top: 40px; */
+  background-color: #5cb33880;
+  height: 200px;
+  border-radius: 10px;
+}
+
+.boxSections {
+  display: flex;
+  margin-top: 50px;
+  flex-direction: column 2;
+}

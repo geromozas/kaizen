@@ -1,7 +1,8 @@
-import AboutMe from "../components/pages/aboutMe/AboutMe.jsx";
+import Calendar from "../components/pages/calendar/Calendar.jsx";
+import { Clients } from "../components/pages/clients/Clients.jsx";
 import Home from "../components/pages/home/Home.jsx";
-import ItemDetail from "../components/pages/itemDetail/ItemDetail.jsx";
-import ItemListContainer from "../components/pages/itemList/ItemListContainer.jsx";
+import { Payments } from "../components/pages/payments/Payments.jsx";
+import Report from "../components/pages/report/Report.jsx";
 
 export const routes = [
   {
@@ -10,18 +11,23 @@ export const routes = [
     Element: Home,
   },
   {
-    id: "shop",
-    path: "/shop",
-    Element: ItemListContainer,
+    id: "clients",
+    path: "/clients",
+    Element: Clients,
   },
   {
-    id: "detail",
-    path: "/itemDetail/:id",
-    Element: ItemDetail,
+    id: "calendar",
+    path: "/calendar",
+    Element: Calendar,
   },
   {
-    id: "aboutMe",
-    path: "/about-me",
-    Element: AboutMe,
+    id: "payments",
+    path: "/payments",
+    Element: Payments,
+  },
+  {
+    id: "report",
+    path: "/report",
+    Element: Report,
   },
 ];
