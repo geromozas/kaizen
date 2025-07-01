@@ -40,9 +40,12 @@ const Login = () => {
           const userRef = doc(userCollection, res.user.uid);
           const userDoc = await getDoc(userRef);
           let finalyUser = {
+            uid: res.user.uid,
             email: res.user.email,
             rol: userDoc.data().rol,
+            name: userDoc.data().name,
           };
+          console.log(finalyUser);
           handleLogin(finalyUser);
           navigate("/");
         } else {
@@ -72,9 +75,11 @@ const Login = () => {
         flexDirection: "column",
       }}
     >
-      <h1 style={{ marginBottom: 60, color: "#27548A", fontSize: 50 }}>
-        GM dev
-      </h1>
+      <img
+        src="https://res.cloudinary.com/ddmvo0ert/image/upload/v1750732501/kaizen/logo-kaizen-2.png"
+        alt=""
+        style={{ marginBottom: 30, width: 350 }}
+      />
       <form onSubmit={handleSubmit}>
         <Grid container rowSpacing={2} justifyContent={"center"}>
           <Grid item xs={10} md={12}>

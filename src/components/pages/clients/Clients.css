@@ -1,0 +1,13 @@
+#boxClients {
+}
+
+.firtsBoxClient {
+  display: flex;
+  justify-content: space-between;
+}
+
+.secondBoxClient {
+  margin-top: 50px;
+  border: solid black 1px;
+  border-radius: 5px;
+}

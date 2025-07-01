@@ -5,7 +5,7 @@ import { Navigate, Outlet } from "react-router-dom";
 const ProtectedAdmin = () => {
   const { user } = useContext(AuthContext);
   const rolAdmin = import.meta.env.VITE_ROL_ADMIM;
-  return <>{user.rol === rolAdmin ? <Outlet /> : <Navigate to="/" />}</>;
+  return <>{user.rol === rolAdmin ? <Outlet /> : <Navigate to="/login" />}</>;
 };
 
 export default ProtectedAdmin;

@@ -14,7 +14,8 @@ import Box from "@mui/material/Box";
 // import Typography from "@mui/material/Typography";
 import Modal from "@mui/material/Modal";
 import { useState } from "react";
-import ProductForm from "./ProductForm";
+import { ClientForm } from "./ClientForm";
+// import ProductForm from "./ProductForm";
 
 const style = {
   position: "absolute",
@@ -22,7 +23,7 @@ const style = {
   left: "50%",
   transform: "translate(-50%, -50%)",
   width: 800,
-  height: 675,
+  height: 850,
   bgcolor: "background.paper",
   border: "2px solid #000",
   borderRadius: 5,
@@ -30,24 +31,24 @@ const style = {
   p: 4,
 };
 
-const ProductsList = ({ products, setIsChange }) => {
+const ClientsList = ({ clients, setIsChange }) => {
   const [open, setOpen] = useState(false);
-  const [productSelected, setProductSelected] = useState(null);
+  const [clientSelected, setClientSelected] = useState(null);
 
   const handleClose = () => {
     setOpen(false);
   };
 
-  const deleteProduct = (id) => {
-    deleteDoc(doc(db, "products", id));
-    console.log("el pruducto con el id " + id + " se ha borrado");
-    alert("Producto borrado");
+  const deleteClient = (id) => {
+    deleteDoc(doc(db, "clients", id));
+    console.log("el alumno con el id " + id + " se ha borrado");
+    alert("Alumno borrado");
 
     setIsChange(true);
   };
 
-  const handleOpen = (product) => {
-    setProductSelected(product);
+  const handleOpen = (client) => {
+    setClientSelected(client);
     setOpen(true);
   };
 
@@ -58,7 +59,7 @@ const ProductsList = ({ products, setIsChange }) => {
         style={{ marginBottom: 20 }}
         onClick={() => handleOpen(null)}
       >
-        Agregar Producto
+        + Nuevo alumno
       </Button>
       <TableContainer component={Paper}>
         <Table sx={{ minWidth: 650 }} aria-label="simple table">
@@ -68,25 +69,19 @@ const ProductsList = ({ products, setIsChange }) => {
                 ID
               </TableCell>
               <TableCell align="left" style={{ fontWeight: "bold" }}>
-                TITULO
-              </TableCell>
-              {/* <TableCell align="left" style={{ fontWeight: "bold" }}>
-                DESCRIPCIÓN CORTA
-              </TableCell> */}
-              <TableCell align="left" style={{ fontWeight: "bold" }}>
-                DESCRIPCIÓN
+                Nombre
               </TableCell>
               <TableCell align="left" style={{ fontWeight: "bold" }}>
-                PRECIO
+                Apellido
               </TableCell>
               <TableCell align="left" style={{ fontWeight: "bold" }}>
-                CATEGORIA
+                Celular
               </TableCell>
               <TableCell align="left" style={{ fontWeight: "bold" }}>
-                STOCK
+                2do Celular
               </TableCell>
               <TableCell align="left" style={{ fontWeight: "bold" }}>
-                IMAGEN
+                Dirección
               </TableCell>
               <TableCell align="left" style={{ fontWeight: "bold" }}>
                 ACCIONES
@@ -94,50 +89,39 @@ const ProductsList = ({ products, setIsChange }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {products.map((product) => (
+            {clients.map((client) => (
               <TableRow
-                key={product.id}
+                key={client.id}
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
               >
                 <TableCell component="th" scope="row" align="left">
-                  {product.id}
+                  {client.id}
                 </TableCell>
                 <TableCell component="th" scope="row" align="left">
-                  {product.title}
+                  {client.name}
                 </TableCell>
-                {/* <TableCell component="th" scope="row" align="left">
-                  {product.description_small}
-                </TableCell> */}
+                <TableCell component="th" scope="row" align="left">
+                  {client.lastName}
+                </TableCell>
                 <TableCell
                   component="th"
                   scope="row"
                   width="600px"
                   align="left"
                 >
-                  {product.description}
+                  {client.phone}
                 </TableCell>
                 <TableCell component="th" scope="row" align="left">
-                  ${product.unit_price}
+                  ${client.phoneHelp}
                 </TableCell>
                 <TableCell component="th" scope="row" align="left">
-                  {product.category}
+                  {client.address}
                 </TableCell>
                 <TableCell component="th" scope="row" align="left">
-                  {product.stock}
-                </TableCell>
-                <TableCell component="th" scope="row" align="left">
-                  <img
-                    src={product.image}
-                    alt=""
-                    style={{ width: 100, height: 100, borderRadius: 10 }}
-                    align="left"
-                  />
-                </TableCell>
-                <TableCell component="th" scope="row" align="left">
-                  <IconButton onClick={() => handleOpen(product)}>
+                  <IconButton onClick={() => handleOpen(client)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton onClick={() => deleteProduct(product.id)}>
+                  <IconButton onClick={() => deleteClient(client.id)}>
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -153,11 +137,11 @@ const ProductsList = ({ products, setIsChange }) => {
         aria-describedby="modal-modal-description"
       >
         <Box sx={style}>
-          <ProductForm
+          <ClientForm
             handleClose={handleClose}
             setIsChange={setIsChange}
-            productSelected={productSelected}
-            setProductSelected={setProductSelected}
+            clientSelected={clientSelected}
+            setClientSelected={setClientSelected}
           />
         </Box>
       </Modal>
@@ -165,4 +149,4 @@ const ProductsList = ({ products, setIsChange }) => {
   );
 };
 
-export default ProductsList;
+export default ClientsList;

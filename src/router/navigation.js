@@ -14,7 +14,13 @@ export const menuItems = [
   {
     id: "clients",
     path: "/clients",
-    title: "Alumnos / Pacientes",
+    title: "Alumnos",
+    Icon: GroupIcon,
+  },
+  {
+    id: "patients",
+    path: "/patients",
+    title: "Pacientes",
     Icon: GroupIcon,
   },
   {

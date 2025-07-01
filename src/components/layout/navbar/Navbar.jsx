@@ -10,8 +10,8 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import MenuIcon from "@mui/icons-material/Menu";
 import Toolbar from "@mui/material/Toolbar";
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import LogoutIcon from "@mui/icons-material/Logout";
+import LoginIcon from "@mui/icons-material/Login";
 
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useContext, useState } from "react";
@@ -23,12 +23,12 @@ import "./Navbar.css";
 const drawerWidth = 200;
 
 function Navbar(props) {
-  const { logoutContext, user } = useContext(AuthContext);
+  const { logoutContext, user, isLogged } = useContext(AuthContext);
   const { window } = props;
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
-  const rolAdmin = import.meta.env.VITE_ROL_ADMIM;
+  // const rolAdmin = import.meta.env.VITE_ROL_ADMIM;
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -60,23 +60,24 @@ function Navbar(props) {
           );
         })}
 
-        {user.rol === rolAdmin && (
-          <Link to={"/dashboard"}>
+        {isLogged ? (
+          <ListItem disablePadding>
+            <ListItemButton onClick={handleLogOut}>
+              <ListItemIcon>
+                <LogoutIcon sx={{ color: "black" }} />
+              </ListItemIcon>
+              <ListItemText primary={"Cerrar sesion"} sx={{ color: "black" }} />
+            </ListItemButton>
+          </ListItem>
+        ) : (
+          <Link to={"/login"}>
             <ListItem disablePadding>
               <ListItemButton>
                 <ListItemIcon>
-                  <DashboardIcon sx={{ color: "black" }} />
-                </ListItemIcon>
-                <ListItemText primary={"Dashboard"} sx={{ color: "black" }} />
-              </ListItemButton>
-            </ListItem>
-            <ListItem disablePadding>
-              <ListItemButton onClick={handleLogOut}>
-                <ListItemIcon>
-                  <LogoutIcon sx={{ color: "black" }} />
+                  <LoginIcon sx={{ color: "black" }} />
                 </ListItemIcon>
                 <ListItemText
-                  primary={"Cerrar sesion"}
+                  primary={"Iniciar sesión"}
                   sx={{ color: "black" }}
                 />
               </ListItemButton>
