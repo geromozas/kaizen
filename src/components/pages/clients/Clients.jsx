@@ -59,19 +59,8 @@ const Clients = () => {
           <h1>Alumnos</h1>
           <p>Gestiona la información de tus alumnos</p>
         </div>
-        <div>
-          <TextField
-            id="outlined-basic"
-            label="Buscar"
-            variant="outlined"
-            sx={{ marginRight: 5 }}
-          />
-          {/* <Button variant="contained">+ Nuevo Alumno</Button> */}
-        </div>
       </div>
       <div className="secondBoxClient">
-        <h3>Lista de alumnos</h3>
-        <p>Alumnos registrados</p>
         <ClientsList clients={clients} setIsChange={setIsChange} />
       </div>
     </div>

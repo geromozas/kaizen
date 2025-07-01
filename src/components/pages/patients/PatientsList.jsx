@@ -14,7 +14,8 @@ import Box from "@mui/material/Box";
 // import Typography from "@mui/material/Typography";
 import Modal from "@mui/material/Modal";
 import { useState } from "react";
-import { ClientForm } from "./ClientForm";
+import { PatientForm } from "./PatientsForm";
+
 // import ProductForm from "./ProductForm";
 
 const style = {
@@ -31,24 +32,24 @@ const style = {
   p: 4,
 };
 
-const ClientsList = ({ clients, setIsChange }) => {
+export const PatientsList = ({ patients, setIsChange }) => {
   const [open, setOpen] = useState(false);
-  const [clientSelected, setClientSelected] = useState(null);
+  const [patientSelected, setPatientSelected] = useState(null);
 
   const handleClose = () => {
     setOpen(false);
   };
 
-  const deleteClient = (id) => {
-    deleteDoc(doc(db, "clients", id));
-    console.log("el alumno con el id " + id + " se ha borrado");
-    alert("Alumno borrado");
+  const deletePatient = (id) => {
+    deleteDoc(doc(db, "patients", id));
+    console.log("el paciente con el id " + id + " se ha borrado");
+    alert("Paciente borrado");
 
     setIsChange(true);
   };
 
-  const handleOpen = (client) => {
-    setClientSelected(client);
+  const handleOpen = (patient) => {
+    setPatientSelected(patient);
     setOpen(true);
   };
 
@@ -56,8 +57,8 @@ const ClientsList = ({ clients, setIsChange }) => {
     <div style={{ marginTop: 30 }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <div style={{ marginLeft: 10, marginBottom: 15 }}>
-          <h2>Lista de alumnos</h2>
-          <p>Alumnos registrados</p>
+          <h2>Lista de pacientes</h2>
+          <p>Pacientes registrados</p>
         </div>
         <div>
           <Button
@@ -65,7 +66,7 @@ const ClientsList = ({ clients, setIsChange }) => {
             style={{ marginBottom: 20, marginRight: 10 }}
             onClick={() => handleOpen(null)}
           >
-            + Nuevo alumno
+            + Nuevo paciente
           </Button>
           <TextField
             id="outlined-basic"
@@ -98,39 +99,45 @@ const ClientsList = ({ clients, setIsChange }) => {
                 Dirección
               </TableCell>
               <TableCell align="left" style={{ fontWeight: "bold" }}>
+                Obra Social
+              </TableCell>
+              <TableCell align="left" style={{ fontWeight: "bold" }}>
                 ACCIONES
               </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {clients.map((client) => (
+            {patients.map((patient) => (
               <TableRow
-                key={client.id}
+                key={patient.id}
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
               >
                 {/* <TableCell component="th" scope="row" align="left">
-                  {client.id}
+                  {patient.id}
                 </TableCell> */}
                 <TableCell component="th" scope="row" align="left">
-                  {client.name}
+                  {patient.name}
                 </TableCell>
                 <TableCell component="th" scope="row" align="left">
-                  {client.lastName}
+                  {patient.lastName}
                 </TableCell>
                 <TableCell component="th" scope="row" align="left">
-                  {client.phone}
+                  {patient.phone}
                 </TableCell>
                 <TableCell component="th" scope="row" align="left">
-                  {client.phoneHelp}
+                  {patient.phoneHelp}
                 </TableCell>
                 <TableCell component="th" scope="row" align="left">
-                  {client.address}
+                  {patient.address}
                 </TableCell>
                 <TableCell component="th" scope="row" align="left">
-                  <IconButton onClick={() => handleOpen(client)}>
+                  {patient.socialWork}
+                </TableCell>
+                <TableCell component="th" scope="row" align="left">
+                  <IconButton onClick={() => handleOpen(patient)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton onClick={() => deleteClient(client.id)}>
+                  <IconButton onClick={() => deletePatient(patient.id)}>
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -146,16 +153,14 @@ const ClientsList = ({ clients, setIsChange }) => {
         aria-describedby="modal-modal-description"
       >
         <Box sx={style}>
-          <ClientForm
+          <PatientForm
             handleClose={handleClose}
             setIsChange={setIsChange}
-            clientSelected={clientSelected}
-            setClientSelected={setClientSelected}
+            patientSelected={patientSelected}
+            setPatientSelected={setPatientSelected}
           />
         </Box>
       </Modal>
     </div>
   );
 };
-
-export default ClientsList;
