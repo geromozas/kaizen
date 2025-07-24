@@ -9,10 +9,10 @@ import {
   Select,
   MenuItem,
   Checkbox,
-  // ListItemText,
   OutlinedInput,
   FormGroup,
   FormControlLabel,
+  TextField,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { collection, getDocs, addDoc, doc, setDoc } from "firebase/firestore";
@@ -45,6 +45,7 @@ const NewScheduleModal = ({
   const [clients, setClients] = useState([]);
   const [selectedHour, setSelectedHour] = useState("");
   const [selectedClients, setSelectedClients] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -61,7 +62,14 @@ const NewScheduleModal = ({
   useEffect(() => {
     if (editData) {
       setSelectedHour(editData.hour);
-      setSelectedClients(editData.clients);
+      setSelectedClients(
+        editData.clients.map((c) =>
+          typeof c === "string" ? { id: c, attended: false } : c
+        )
+      );
+    } else {
+      setSelectedHour("");
+      setSelectedClients([]);
     }
   }, [editData]);
 
@@ -71,20 +79,31 @@ const NewScheduleModal = ({
     const data = {
       date: selectedDate.toISOString().split("T")[0],
       hour: selectedHour,
-      clients: selectedClients,
+      clients: selectedClients.map((id) => ({
+        id,
+        attended: false,
+      })),
     };
 
     if (editData) {
-      await setDoc(doc(db, "schedules", editData.id), data); // actualiza
+      await setDoc(doc(db, "schedules", editData.id), data);
     } else {
-      await addDoc(collection(db, "schedules"), data); // nuevo
+      await addDoc(collection(db, "schedules"), data);
     }
 
     onClose();
     setSelectedHour("");
     setSelectedClients([]);
+    setSearchTerm("");
     refresh();
   };
+
+  // Filtrado de clientes por nombre o apellido
+  const filteredClients = clients.filter((client) =>
+    `${client.name} ${client.lastName} ${client.dni}`
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
+  );
 
   return (
     <Dialog open={open} onClose={onClose}>
@@ -105,8 +124,17 @@ const NewScheduleModal = ({
           </Select>
         </FormControl>
 
+        <TextField
+          fullWidth
+          margin="dense"
+          label="Buscar cliente"
+          variant="outlined"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+
         <FormGroup>
-          {clients.map((client) => (
+          {filteredClients.map((client) => (
             <FormControlLabel
               key={client.id}
               control={
@@ -130,8 +158,14 @@ const NewScheduleModal = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button onClick={handleSave} variant="contained">
+        <Button onClick={onClose} style={{ color: "green" }}>
+          Cancelar
+        </Button>
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          style={{ backgroundColor: "green" }}
+        >
           Guardar
         </Button>
       </DialogActions>

@@ -2,7 +2,7 @@ import Calendar from "../components/pages/calendar/Calendar.jsx";
 import Clients from "../components/pages/clients/Clients.jsx";
 import Home from "../components/pages/home/Home.jsx";
 import Patients from "../components/pages/patients/Patients.jsx";
-import { Payments } from "../components/pages/payments/Payments.jsx";
+import PaymentManagement from "../components/pages/payments/PaymentManagement.jsx";
 import Report from "../components/pages/report/Report.jsx";
 
 export const routes = [
@@ -29,7 +29,7 @@ export const routes = [
   {
     id: "payments",
     path: "/payments",
-    Element: Payments,
+    Element: PaymentManagement,
   },
   {
     id: "report",

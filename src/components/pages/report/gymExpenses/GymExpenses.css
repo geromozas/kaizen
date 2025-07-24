@@ -1,0 +1,99 @@
+.expenses-container {
+  max-width: 1000px;
+  margin: 40px auto;
+  padding: 25px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+  font-family: "Segoe UI", sans-serif;
+  border: 1px solid #ddd;
+}
+
+/* Título y subtítulo */
+.expenses-container h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.expenses-container p {
+  color: #666;
+  margin-bottom: 25px;
+}
+
+/* Formulario */
+.expense-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.expense-form input {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 15px;
+  flex: 1;
+  min-width: 150px;
+}
+
+.expense-form button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.25s ease;
+}
+
+.expense-form button:hover {
+  background-color: #45a049;
+}
+
+/* Tabla */
+.expense-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.expense-table th,
+.expense-table td {
+  text-align: left;
+  padding: 12px;
+}
+
+.expense-table thead {
+  background-color: #f3f3f3;
+  border-bottom: 1px solid #ddd;
+}
+
+.expense-table tbody tr {
+  border-bottom: 1px solid #eee;
+}
+
+.expense-table tfoot {
+  border-top: 2px solid #ddd;
+}
+
+.amount-red {
+  color: #d32f2f;
+  font-weight: bold;
+}
+
+/* Íconos */
+.icon {
+  font-size: 18px;
+  margin: 0 5px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.icon:hover {
+  color: #4caf50;
+}

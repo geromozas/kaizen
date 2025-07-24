@@ -1,0 +1,37 @@
+.accountStatus {
+  padding: 20px;
+}
+
+.searchInput {
+  margin: 10px 0;
+  padding: 8px;
+  width: 300px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.accountTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.accountTable th,
+.accountTable td {
+  border: 1px solid #eee;
+  padding: 10px;
+  text-align: left;
+}
+
+.status.ok {
+  background-color: #d4f4dd;
+  color: #0a7d37;
+  padding: 4px 8px;
+  border-radius: 10px;
+}
+
+.status.debt {
+  background-color: #f8d7da;
+  color: #a94442;
+  padding: 4px 8px;
+  border-radius: 10px;
+}
