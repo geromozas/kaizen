@@ -15,8 +15,6 @@ export const ClientForm = ({
     { label: "1 vez por semana", valor: 10000 },
     { label: "2 veces por semana", valor: 15000 },
     { label: "3 veces por semana", valor: 20000 },
-    { label: "4 veces por semana", valor: 25000 },
-    { label: "5 veces por semana", valor: 30000 },
   ];
 
   const [newClient, setNewClient] = useState({
@@ -27,16 +25,38 @@ export const ClientForm = ({
     phoneHelp: "",
     dni: "",
     actividad: "",
+    fechaInicio: new Date().toISOString().split("T")[0], // fecha actual por defecto
     debt: 0,
     lastpay: "",
   });
+
+  // Cálculo proporcional con redondeo a múltiplos de 100
+  const calcularProporcional = (valorMensual, fechaInicio) => {
+    const inicio = new Date(fechaInicio);
+    const finMes = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0); // último día del mes
+    const diasRestantes = finMes.getDate() - inicio.getDate() + 1;
+    const diasMes = finMes.getDate();
+
+    // Cálculo proporcional
+    let proporcional = (valorMensual * diasRestantes) / diasMes;
+
+    // Redondear al múltiplo de 100 más cercano
+    proporcional = Math.round(proporcional / 100) * 100;
+
+    return proporcional;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     if (name === "actividad") {
       const selected = actividades.find((a) => a.label === value);
-      const updatedDebt = selected ? selected.valor : 0;
+      const updatedDebt = selected
+        ? calcularProporcional(
+            selected.valor,
+            clientSelected?.fechaInicio || newClient.fechaInicio
+          )
+        : 0;
 
       if (clientSelected) {
         setClientSelected({
@@ -48,6 +68,36 @@ export const ClientForm = ({
         setNewClient({
           ...newClient,
           actividad: value,
+          debt: updatedDebt,
+        });
+      }
+    } else if (name === "fechaInicio") {
+      if (clientSelected) {
+        const updatedDebt = clientSelected.actividad
+          ? calcularProporcional(
+              actividades.find((a) => a.label === clientSelected.actividad)
+                ?.valor || 0,
+              value
+            )
+          : clientSelected.debt;
+
+        setClientSelected({
+          ...clientSelected,
+          fechaInicio: value,
+          debt: updatedDebt,
+        });
+      } else {
+        const updatedDebt = newClient.actividad
+          ? calcularProporcional(
+              actividades.find((a) => a.label === newClient.actividad)?.valor ||
+                0,
+              value
+            )
+          : newClient.debt;
+
+        setNewClient({
+          ...newClient,
+          fechaInicio: value,
           debt: updatedDebt,
         });
       }
@@ -73,7 +123,11 @@ export const ClientForm = ({
     if (clientSelected) {
       await updateDoc(doc(clientsRef, clientSelected.id), clientSelected);
     } else {
-      await addDoc(clientsRef, newClient);
+      // Se agrega el estado "Deudor" por defecto al crear un nuevo cliente
+      await addDoc(clientsRef, {
+        ...newClient,
+        estado: "Deudor",
+      });
     }
 
     setIsChange(true);
@@ -127,6 +181,16 @@ export const ClientForm = ({
         name="dni"
         onChange={handleChange}
         defaultValue={clientSelected?.dni}
+      />
+
+      {/* Fecha de inicio */}
+      <TextField
+        type="date"
+        label="Fecha de inicio"
+        name="fechaInicio"
+        value={clientSelected?.fechaInicio || newClient.fechaInicio}
+        onChange={handleChange}
+        InputLabelProps={{ shrink: true }}
       />
 
       <TextField

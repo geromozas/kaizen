@@ -1,43 +1,90 @@
-// import { useState } from "react";
+// import { useState, useEffect } from "react";
 // import "./GymExpenses.css";
-// import { FaTrash, FaEdit } from "react-icons/fa";
+// import DeleteIcon from "@mui/icons-material/Delete";
+// import EditIcon from "@mui/icons-material/Edit";
+// import {
+//   collection,
+//   addDoc,
+//   getDocs,
+//   deleteDoc,
+//   updateDoc,
+//   doc,
+//   Timestamp,
+// } from "firebase/firestore";
+// import { db } from "../../../../firebaseConfig";
 
-// const GymExpenses = () => {
+// const GymExpenses = ({ onGastosChange, selectedDate }) => {
 //   const [expenses, setExpenses] = useState([]);
 //   const [form, setForm] = useState({ concept: "", amount: "" });
-//   const [editIndex, setEditIndex] = useState(null);
+//   const [editId, setEditId] = useState(null);
+
+//   const expensesRef = collection(db, "gastos");
+
+//   const fetchExpenses = async () => {
+//     const snapshot = await getDocs(expensesRef);
+//     const [year, month] = selectedDate.split("-").map(Number);
+
+//     const data = snapshot.docs
+//       .map((doc) => ({
+//         id: doc.id,
+//         ...doc.data(),
+//       }))
+//       .filter((item) => {
+//         const createdAt = item.createdAt?.toDate?.() || item.createdAt;
+//         if (!createdAt) return false;
+//         const date = new Date(createdAt);
+//         return date.getFullYear() === year && date.getMonth() + 1 === month;
+//       });
+
+//     setExpenses(data);
+//   };
+
+//   useEffect(() => {
+//     fetchExpenses();
+//   }, [selectedDate]);
+
+//   useEffect(() => {
+//     const total = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+//     if (onGastosChange) onGastosChange(total);
+//   }, [expenses, onGastosChange]);
 
 //   const handleChange = (e) => {
 //     const { name, value } = e.target;
 //     setForm((prev) => ({ ...prev, [name]: value }));
 //   };
 
-//   const handleAdd = () => {
+//   const handleAdd = async () => {
 //     if (!form.concept || !form.amount) return;
-//     const amount = parseInt(form.amount);
+//     const amount = parseFloat(form.amount);
+//     const now = new Date();
 
-//     if (editIndex !== null) {
-//       const updated = [...expenses];
-//       updated[editIndex] = { concept: form.concept, amount };
-//       setExpenses(updated);
-//       setEditIndex(null);
+//     if (editId) {
+//       const docRef = doc(db, "gastos", editId);
+//       await updateDoc(docRef, { concept: form.concept, amount });
+//       setEditId(null);
 //     } else {
-//       setExpenses((prev) => [...prev, { concept: form.concept, amount }]);
+//       await addDoc(expensesRef, {
+//         concept: form.concept,
+//         amount,
+//         createdAt: Timestamp.fromDate(now),
+//       });
 //     }
 
 //     setForm({ concept: "", amount: "" });
+//     fetchExpenses();
 //   };
 
-//   const handleEdit = (index) => {
-//     setEditIndex(index);
-//     setForm(expenses[index]);
+//   const handleEdit = (exp) => {
+//     setForm({ concept: exp.concept, amount: exp.amount });
+//     setEditId(exp.id);
 //   };
 
-//   const handleDelete = (index) => {
-//     setExpenses((prev) => prev.filter((_, i) => i !== index));
+//   const handleDelete = async (id) => {
+//     await deleteDoc(doc(db, "gastos", id));
+//     fetchExpenses();
 //   };
 
-//   const total = expenses.reduce((acc, e) => acc + e.amount, 0);
+//   const total = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
 
 //   return (
 //     <div className="expenses-container">
@@ -59,9 +106,7 @@
 //           value={form.amount}
 //           onChange={handleChange}
 //         />
-//         <button onClick={handleAdd}>
-//           {editIndex !== null ? "Actualizar" : "Agregar"}
-//         </button>
+//         <button onClick={handleAdd}>{editId ? "Actualizar" : "Agregar"}</button>
 //       </div>
 
 //       <table className="expense-table">
@@ -73,15 +118,18 @@
 //           </tr>
 //         </thead>
 //         <tbody className="scrollable-body">
-//           {expenses.map((exp, idx) => (
-//             <tr key={idx}>
+//           {expenses.map((exp) => (
+//             <tr key={exp.id}>
 //               <td>{exp.concept}</td>
 //               <td className="amount-red">
-//                 ${exp.amount.toLocaleString("es-AR")}
+//                 ${parseFloat(exp.amount).toLocaleString("es-AR")}
 //               </td>
 //               <td>
-//                 <FaEdit className="icon" onClick={() => handleEdit(idx)} />
-//                 <FaTrash className="icon" onClick={() => handleDelete(idx)} />
+//                 <EditIcon className="icon" onClick={() => handleEdit(exp)} />
+//                 <DeleteIcon
+//                   className="icon"
+//                   onClick={() => handleDelete(exp.id)}
+//                 />
 //               </td>
 //             </tr>
 //           ))}
@@ -114,29 +162,44 @@ import {
   deleteDoc,
   updateDoc,
   doc,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../../../../firebaseConfig";
-// adaptá el path
 
-const GymExpenses = () => {
+const GymExpenses = ({ onGastosChange, selectedDate }) => {
   const [expenses, setExpenses] = useState([]);
   const [form, setForm] = useState({ concept: "", amount: "" });
   const [editId, setEditId] = useState(null);
 
-  const expensesRef = collection(db, "gastos"); // coleccion "gastos" en firestore
+  const expensesRef = collection(db, "gastos");
 
   const fetchExpenses = async () => {
     const snapshot = await getDocs(expensesRef);
-    const data = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const [year, month] = selectedDate.split("-").map(Number);
+
+    const data = snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      .filter((item) => {
+        const createdAt = item.createdAt?.toDate?.() || item.createdAt;
+        if (!createdAt) return false;
+        const date = new Date(createdAt);
+        return date.getFullYear() === year && date.getMonth() + 1 === month;
+      });
+
     setExpenses(data);
   };
 
   useEffect(() => {
     fetchExpenses();
-  }, []);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    const total = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+    if (onGastosChange) onGastosChange(total);
+  }, [expenses, onGastosChange]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -145,14 +208,22 @@ const GymExpenses = () => {
 
   const handleAdd = async () => {
     if (!form.concept || !form.amount) return;
-    const amount = parseInt(form.amount);
+    const amount = parseFloat(form.amount);
+
+    // Usar la fecha del mes seleccionado en lugar del momento actual
+    const [year, month] = selectedDate.split("-").map(Number);
+    const dateForExpense = new Date(year, month - 1, 1); // Primer día del mes seleccionado
 
     if (editId) {
       const docRef = doc(db, "gastos", editId);
       await updateDoc(docRef, { concept: form.concept, amount });
       setEditId(null);
     } else {
-      await addDoc(expensesRef, { concept: form.concept, amount });
+      await addDoc(expensesRef, {
+        concept: form.concept,
+        amount,
+        createdAt: Timestamp.fromDate(dateForExpense),
+      });
     }
 
     setForm({ concept: "", amount: "" });
@@ -169,7 +240,7 @@ const GymExpenses = () => {
     fetchExpenses();
   };
 
-  const total = expenses.reduce((acc, e) => acc + e.amount, 0);
+  const total = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
 
   return (
     <div className="expenses-container">
@@ -207,7 +278,7 @@ const GymExpenses = () => {
             <tr key={exp.id}>
               <td>{exp.concept}</td>
               <td className="amount-red">
-                ${exp.amount.toLocaleString("es-AR")}
+                ${parseFloat(exp.amount).toLocaleString("es-AR")}
               </td>
               <td>
                 <EditIcon className="icon" onClick={() => handleEdit(exp)} />

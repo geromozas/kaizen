@@ -97,13 +97,13 @@
 //       const clienteRef = doc(db, "clients", clienteDoc.id);
 //       const clienteData = clienteDoc.data();
 
-//       const deudaActual = clienteData.deuda || 30000;
+//       const deudaActual = clienteData.debt || 30000;
 //       const nuevaDeuda = Math.max(0, deudaActual - montoPagado);
 //       const nuevoEstado = nuevaDeuda === 0 ? "Al día" : "Deudor";
 
 //       await updateDoc(clienteRef, {
 //         ultimoPago: nuevoPago.fecha,
-//         deuda: nuevaDeuda,
+//         debt: nuevaDeuda,
 //         estado: nuevoEstado,
 //       });
 //     } else {
@@ -127,7 +127,6 @@
 
 //     await deleteDoc(doc(db, "payments", pago.id));
 
-//     // Revertir deuda en cliente
 //     const q = query(
 //       collection(db, "clients"),
 //       where("dni", "==", pago.alumno.dni)
@@ -139,9 +138,9 @@
 //       const clienteRef = doc(db, "clients", clienteDoc.id);
 //       const clienteData = clienteDoc.data();
 
-//       const nuevaDeuda = (clienteData.deuda || 0) + (pago.monto || 0);
+//       const nuevaDeuda = (clienteData.debt || 0) + (pago.monto || 0);
 //       await updateDoc(clienteRef, {
-//         deuda: nuevaDeuda,
+//         debt: nuevaDeuda,
 //         estado: nuevaDeuda === 0 ? "Al día" : "Deudor",
 //       });
 //     }
@@ -198,7 +197,6 @@
 //         </tbody>
 //       </table>
 
-//       {/* Modal */}
 //       <Modal open={openModal} onClose={() => setOpenModal(false)}>
 //         <Box
 //           sx={{
@@ -307,6 +305,7 @@ import {
 import { db } from "../../../../firebaseConfig";
 import { Button, Modal, Box, TextField, MenuItem } from "@mui/material";
 import "./PaymentsHistory.css";
+import { Timestamp } from "firebase/firestore";
 
 export const PaymentsHistory = () => {
   const [pagos, setPagos] = useState([]);
@@ -368,11 +367,20 @@ export const PaymentsHistory = () => {
   const handleRegistrarPago = async () => {
     const montoPagado = parseInt(nuevoPago.monto);
 
+    // Obtener el mes en formato YYYY-MM desde la fecha ingresada (tipo string DD/MM/YYYY)
+    const [dia, mes, anio] = nuevoPago.fecha.split("/").map(Number);
+    const mesPago = `${anio}-${String(mes).padStart(2, "0")}`;
+
+    // Crear objeto Date desde la fecha ingresada para el createdAt
+    const fechaPago = new Date(anio, mes - 1, dia);
+
     const pagoFinal = {
       fecha: nuevoPago.fecha,
       concepto: nuevoPago.concepto,
       metodo: nuevoPago.metodo,
       monto: montoPagado,
+      mes: mesPago,
+      createdAt: Timestamp.fromDate(fechaPago), // ← LÍNEA AGREGADA
       alumno: {
         name: nuevoPago.nombre,
         dni: nuevoPago.dni,
@@ -565,6 +573,7 @@ export const PaymentsHistory = () => {
             fullWidth
             sx={{ mt: 2 }}
             onClick={handleRegistrarPago}
+            disabled={!nuevoPago.dni || !nuevoPago.monto}
           >
             Registrar
           </Button>

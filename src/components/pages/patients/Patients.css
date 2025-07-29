@@ -1,36 +1,23 @@
-/* #boxClients {
-}
-
-.firtsBoxClient {
-  display: flex;
-  justify-content: space-between;
-}
-
-.secondBoxClient {
-  margin-top: 50px;
-  border: solid black 1px;
-  border-radius: 5px;
-} */
-#boxClients {
+#boxPatients {
   padding: 2rem;
   background-color: #f8f9fa;
   min-height: 100vh;
 }
 
-.firtsBoxClient {
+.firtsBoxPatients {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
 }
 
-.firtsBoxClient h1 {
+.firtsBoxPatients h1 {
   margin: 0;
   font-size: 2rem;
   color: #333;
 }
 
-.firtsBoxClient p {
+.firtsBoxPatients p {
   margin: 0.5rem 0 0 0;
   color: #666;
   font-size: 1rem;

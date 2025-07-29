@@ -2,8 +2,8 @@ import { useState } from "react";
 import { db } from "../../../firebaseConfig";
 import { useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
-import ClientsList from "./ClientsList";
 import "./Clients.css";
+import ClientsList from "./ClientsList";
 
 const Clients = () => {
   const [clients, setClients] = useState([]);

@@ -3,6 +3,7 @@ import { db } from "../../../firebaseConfig";
 import { useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { PatientsList } from "./PatientsList";
+import "./Patients.css";
 
 const Clients = () => {
   const [patients, setPatients] = useState([]);
