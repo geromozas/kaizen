@@ -1,3 +1,179 @@
+// import {
+//   Dialog,
+//   DialogTitle,
+//   DialogContent,
+//   DialogActions,
+//   Button,
+//   FormControl,
+//   InputLabel,
+//   Select,
+//   MenuItem,
+//   Checkbox,
+//   OutlinedInput,
+//   FormGroup,
+//   FormControlLabel,
+//   TextField,
+// } from "@mui/material";
+// import { useEffect, useState } from "react";
+// import { collection, getDocs, addDoc, doc, setDoc } from "firebase/firestore";
+// import { db } from "../../../firebaseConfig";
+
+// const availableHours = [
+//   "07:00",
+//   "08:00",
+//   "09:00",
+//   "10:00",
+//   "11:00",
+//   "12:00",
+//   "13:00",
+//   "14:00",
+//   "15:00",
+//   "16:00",
+//   "17:00",
+//   "18:00",
+//   "19:00",
+//   "20:00",
+// ];
+
+// const NewScheduleModal = ({
+//   open,
+//   onClose,
+//   selectedDate,
+//   refresh,
+//   editData,
+// }) => {
+//   const [clients, setClients] = useState([]);
+//   const [selectedHour, setSelectedHour] = useState("");
+//   const [selectedClients, setSelectedClients] = useState([]);
+//   const [searchTerm, setSearchTerm] = useState("");
+
+//   useEffect(() => {
+//     const fetchClients = async () => {
+//       const clientsSnap = await getDocs(collection(db, "clients"));
+//       const clientsData = clientsSnap.docs.map((doc) => ({
+//         id: doc.id,
+//         ...doc.data(),
+//       }));
+//       setClients(clientsData);
+//     };
+//     fetchClients();
+//   }, []);
+
+//   useEffect(() => {
+//     if (editData) {
+//       setSelectedHour(editData.hour);
+//       setSelectedClients(
+//         editData.clients.map((c) =>
+//           typeof c === "string" ? { id: c, attended: false } : c
+//         )
+//       );
+//     } else {
+//       setSelectedHour("");
+//       setSelectedClients([]);
+//     }
+//   }, [editData]);
+
+//   const handleSave = async () => {
+//     if (!selectedHour || selectedClients.length === 0) return;
+
+//     const data = {
+//       date: selectedDate.toISOString().split("T")[0],
+//       hour: selectedHour,
+//       clients: selectedClients.map((id) => ({
+//         id,
+//         attended: false,
+//       })),
+//     };
+
+//     if (editData) {
+//       await setDoc(doc(db, "schedules", editData.id), data);
+//     } else {
+//       await addDoc(collection(db, "schedules"), data);
+//     }
+
+//     onClose();
+//     setSelectedHour("");
+//     setSelectedClients([]);
+//     setSearchTerm("");
+//     refresh();
+//   };
+
+//   // Filtrado de clientes por nombre o apellido
+//   const filteredClients = clients.filter((client) =>
+//     `${client.name} ${client.lastName} ${client.dni}`
+//       .toLowerCase()
+//       .includes(searchTerm.toLowerCase())
+//   );
+
+//   return (
+//     <Dialog open={open} onClose={onClose}>
+//       <DialogTitle>Agregar Nuevo Horario</DialogTitle>
+//       <DialogContent>
+//         <FormControl fullWidth margin="normal">
+//           <InputLabel>Seleccionar hora</InputLabel>
+//           <Select
+//             value={selectedHour}
+//             onChange={(e) => setSelectedHour(e.target.value)}
+//             input={<OutlinedInput label="Seleccionar hora" />}
+//           >
+//             {availableHours.map((hour) => (
+//               <MenuItem key={hour} value={hour}>
+//                 {hour}
+//               </MenuItem>
+//             ))}
+//           </Select>
+//         </FormControl>
+
+//         <TextField
+//           fullWidth
+//           margin="dense"
+//           label="Buscar cliente"
+//           variant="outlined"
+//           value={searchTerm}
+//           onChange={(e) => setSearchTerm(e.target.value)}
+//         />
+
+//         <FormGroup>
+//           {filteredClients.map((client) => (
+//             <FormControlLabel
+//               key={client.id}
+//               control={
+//                 <Checkbox
+//                   checked={selectedClients.includes(client.id)}
+//                   onChange={(e) => {
+//                     if (e.target.checked) {
+//                       setSelectedClients([...selectedClients, client.id]);
+//                     } else {
+//                       setSelectedClients(
+//                         selectedClients.filter((id) => id !== client.id)
+//                       );
+//                     }
+//                   }}
+//                 />
+//               }
+//               label={`${client.name} ${client.lastName}`}
+//             />
+//           ))}
+//         </FormGroup>
+//       </DialogContent>
+
+//       <DialogActions>
+//         <Button onClick={onClose} style={{ color: "green" }}>
+//           Cancelar
+//         </Button>
+//         <Button
+//           onClick={handleSave}
+//           variant="contained"
+//           style={{ backgroundColor: "green" }}
+//         >
+//           Guardar
+//         </Button>
+//       </DialogActions>
+//     </Dialog>
+//   );
+// };
+
+// export default NewScheduleModal;
 import {
   Dialog,
   DialogTitle,
@@ -13,9 +189,21 @@ import {
   FormGroup,
   FormControlLabel,
   TextField,
+  Typography,
+  Box,
+  Chip,
+  Paper,
+  Divider,
 } from "@mui/material";
 import { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, doc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  doc,
+  setDoc,
+  writeBatch,
+} from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 
 const availableHours = [
@@ -35,6 +223,16 @@ const availableHours = [
   "20:00",
 ];
 
+const daysOfWeek = [
+  { key: "monday", label: "Lunes", value: 1 },
+  { key: "tuesday", label: "Martes", value: 2 },
+  { key: "wednesday", label: "Miércoles", value: 3 },
+  { key: "thursday", label: "Jueves", value: 4 },
+  { key: "friday", label: "Viernes", value: 5 },
+  { key: "saturday", label: "Sábado", value: 6 },
+  { key: "sunday", label: "Domingo", value: 0 },
+];
+
 const NewScheduleModal = ({
   open,
   onClose,
@@ -43,9 +241,11 @@ const NewScheduleModal = ({
   editData,
 }) => {
   const [clients, setClients] = useState([]);
-  const [selectedHour, setSelectedHour] = useState("");
+  const [selectedHours, setSelectedHours] = useState([]);
+  const [selectedDays, setSelectedDays] = useState([]);
   const [selectedClients, setSelectedClients] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [replicateToMonth, setReplicateToMonth] = useState(true);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -61,41 +261,132 @@ const NewScheduleModal = ({
 
   useEffect(() => {
     if (editData) {
-      setSelectedHour(editData.hour);
+      // Modo edición - comportamiento original
+      setSelectedHours([editData.hour]);
+      setSelectedDays([selectedDate.getDay()]);
       setSelectedClients(
         editData.clients.map((c) =>
           typeof c === "string" ? { id: c, attended: false } : c
         )
       );
+      setReplicateToMonth(false);
     } else {
-      setSelectedHour("");
+      // Modo creación - valores por defecto
+      setSelectedHours([]);
+      setSelectedDays([]);
       setSelectedClients([]);
+      setReplicateToMonth(true);
     }
-  }, [editData]);
+  }, [editData, selectedDate]);
+
+  const generateMonthlyDates = (selectedDaysValues, baseDate) => {
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const dates = [];
+
+    // Obtener primer y último día del mes
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    // Iterar por todos los días del mes
+    for (
+      let date = new Date(firstDay);
+      date <= lastDay;
+      date.setDate(date.getDate() + 1)
+    ) {
+      if (selectedDaysValues.includes(date.getDay())) {
+        dates.push(new Date(date));
+      }
+    }
+
+    return dates;
+  };
 
   const handleSave = async () => {
-    if (!selectedHour || selectedClients.length === 0) return;
-
-    const data = {
-      date: selectedDate.toISOString().split("T")[0],
-      hour: selectedHour,
-      clients: selectedClients.map((id) => ({
-        id,
-        attended: false,
-      })),
-    };
-
-    if (editData) {
-      await setDoc(doc(db, "schedules", editData.id), data);
-    } else {
-      await addDoc(collection(db, "schedules"), data);
+    if (selectedHours.length === 0 || selectedClients.length === 0) {
+      alert("Por favor selecciona al menos un horario y un cliente");
+      return;
     }
 
-    onClose();
-    setSelectedHour("");
-    setSelectedClients([]);
-    setSearchTerm("");
-    refresh();
+    if (!editData && selectedDays.length === 0) {
+      alert("Por favor selecciona al menos un día de la semana");
+      return;
+    }
+
+    const clientsData = selectedClients.map((id) => ({
+      id,
+      attended: false,
+    }));
+
+    try {
+      if (editData) {
+        // Modo edición - actualizar solo el horario específico
+        const data = {
+          date: selectedDate.toISOString().split("T")[0],
+          hour: selectedHours[0],
+          clients: clientsData,
+        };
+        await setDoc(doc(db, "schedules", editData.id), data);
+      } else {
+        // Modo creación - crear múltiples horarios
+        if (replicateToMonth) {
+          // Generar fechas del mes basadas en días seleccionados
+          const dates = generateMonthlyDates(selectedDays, selectedDate);
+
+          // Usar batch para crear múltiples documentos
+          const batch = writeBatch(db);
+
+          dates.forEach((date) => {
+            selectedHours.forEach((hour) => {
+              const scheduleRef = doc(collection(db, "schedules"));
+              const data = {
+                date: date.toISOString().split("T")[0],
+                hour: hour,
+                clients: clientsData,
+              };
+              batch.set(scheduleRef, data);
+            });
+          });
+
+          await batch.commit();
+        } else {
+          // Crear solo para la fecha seleccionada
+          selectedHours.forEach(async (hour) => {
+            const data = {
+              date: selectedDate.toISOString().split("T")[0],
+              hour: hour,
+              clients: clientsData,
+            };
+            await addDoc(collection(db, "schedules"), data);
+          });
+        }
+      }
+
+      // Limpiar formulario y cerrar modal
+      onClose();
+      setSelectedHours([]);
+      setSelectedDays([]);
+      setSelectedClients([]);
+      setSearchTerm("");
+      setReplicateToMonth(true);
+      refresh();
+    } catch (error) {
+      console.error("Error al guardar:", error);
+      alert("Error al guardar los horarios");
+    }
+  };
+
+  const handleHourChange = (event) => {
+    const value = event.target.value;
+    setSelectedHours(typeof value === "string" ? value.split(",") : value);
+  };
+
+  const handleDayChange = (dayValue) => {
+    setSelectedDays((prev) =>
+      prev.includes(dayValue)
+        ? prev.filter((day) => day !== dayValue)
+        : [...prev, dayValue]
+    );
   };
 
   // Filtrado de clientes por nombre o apellido
@@ -105,19 +396,104 @@ const NewScheduleModal = ({
       .includes(searchTerm.toLowerCase())
   );
 
+  const getDayName = (dayValue) => {
+    return daysOfWeek.find((d) => d.value === dayValue)?.label || "";
+  };
+
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Agregar Nuevo Horario</DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {editData ? "Editar Horario" : "Crear Nuevos Horarios"}
+      </DialogTitle>
       <DialogContent>
+        {!editData && (
+          <>
+            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+              Días de la Semana
+            </Typography>
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <FormGroup row>
+                {daysOfWeek.map((day) => (
+                  <FormControlLabel
+                    key={day.key}
+                    control={
+                      <Checkbox
+                        checked={selectedDays.includes(day.value)}
+                        onChange={() => handleDayChange(day.value)}
+                      />
+                    }
+                    label={day.label}
+                  />
+                ))}
+              </FormGroup>
+              {selectedDays.length > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2" color="textSecondary">
+                    Días seleccionados:
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 0.5,
+                      mt: 0.5,
+                    }}
+                  >
+                    {selectedDays.map((dayValue) => (
+                      <Chip
+                        key={dayValue}
+                        label={getDayName(dayValue)}
+                        size="small"
+                        color="primary"
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Paper>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={replicateToMonth}
+                  onChange={(e) => setReplicateToMonth(e.target.checked)}
+                />
+              }
+              label="Replicar a todo el mes"
+            />
+            <Typography variant="caption" display="block" gutterBottom>
+              Si está marcado, se crearán horarios para todos los días
+              seleccionados de todo el mes
+            </Typography>
+
+            <Divider sx={{ my: 2 }} />
+          </>
+        )}
+
         <FormControl fullWidth margin="normal">
-          <InputLabel>Seleccionar hora</InputLabel>
+          <InputLabel>
+            {editData ? "Seleccionar hora" : "Seleccionar horarios"}
+          </InputLabel>
           <Select
-            value={selectedHour}
-            onChange={(e) => setSelectedHour(e.target.value)}
-            input={<OutlinedInput label="Seleccionar hora" />}
+            multiple={!editData}
+            value={selectedHours}
+            onChange={handleHourChange}
+            input={
+              <OutlinedInput
+                label={editData ? "Seleccionar hora" : "Seleccionar horarios"}
+              />
+            }
+            renderValue={(selected) => (
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                {selected.map((value) => (
+                  <Chip key={value} label={value} size="small" />
+                ))}
+              </Box>
+            )}
           >
             {availableHours.map((hour) => (
               <MenuItem key={hour} value={hour}>
+                <Checkbox checked={selectedHours.indexOf(hour) > -1} />
                 {hour}
               </MenuItem>
             ))}
@@ -133,28 +509,49 @@ const NewScheduleModal = ({
           onChange={(e) => setSearchTerm(e.target.value)}
         />
 
-        <FormGroup>
-          {filteredClients.map((client) => (
-            <FormControlLabel
-              key={client.id}
-              control={
-                <Checkbox
-                  checked={selectedClients.includes(client.id)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedClients([...selectedClients, client.id]);
-                    } else {
-                      setSelectedClients(
-                        selectedClients.filter((id) => id !== client.id)
-                      );
-                    }
-                  }}
-                />
-              }
-              label={`${client.name} ${client.lastName}`}
-            />
-          ))}
-        </FormGroup>
+        <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+          Seleccionar Clientes
+        </Typography>
+        <Paper sx={{ maxHeight: 300, overflow: "auto", p: 1 }}>
+          <FormGroup>
+            {filteredClients.map((client) => (
+              <FormControlLabel
+                key={client.id}
+                control={
+                  <Checkbox
+                    checked={selectedClients.includes(client.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedClients([...selectedClients, client.id]);
+                      } else {
+                        setSelectedClients(
+                          selectedClients.filter((id) => id !== client.id)
+                        );
+                      }
+                    }}
+                  />
+                }
+                label={`${client.name} ${client.lastName} - DNI: ${client.dni}`}
+              />
+            ))}
+          </FormGroup>
+        </Paper>
+
+        {!editData && selectedDays.length > 0 && selectedHours.length > 0 && (
+          <Box sx={{ mt: 2, p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
+            <Typography variant="body2" color="textSecondary">
+              <strong>Resumen:</strong> Se crearán{" "}
+              {selectedDays.length * selectedHours.length} horarios
+              {replicateToMonth && " para todo el mes"}
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Días: {selectedDays.map((d) => getDayName(d)).join(", ")}
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Horarios: {selectedHours.join(", ")}
+            </Typography>
+          </Box>
+        )}
       </DialogContent>
 
       <DialogActions>
@@ -165,8 +562,13 @@ const NewScheduleModal = ({
           onClick={handleSave}
           variant="contained"
           style={{ backgroundColor: "green" }}
+          disabled={
+            selectedHours.length === 0 ||
+            selectedClients.length === 0 ||
+            (!editData && selectedDays.length === 0)
+          }
         >
-          Guardar
+          {editData ? "Actualizar" : "Crear Horarios"}
         </Button>
       </DialogActions>
     </Dialog>

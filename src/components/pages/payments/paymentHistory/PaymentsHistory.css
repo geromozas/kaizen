@@ -6,12 +6,14 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: 20px;
+  align-items: flex-end;
 }
 
 .headerPagos input {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 5px;
+  width: 200px;
 }
 
 .botonRegistrar {
@@ -46,4 +48,91 @@ td {
   border-bottom: 1px solid #eee;
   padding: 12px;
   text-align: left;
+}
+
+th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Estilos para los tipos en la tabla */
+.tipo.cliente {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.tipo.paciente {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+/* Estilos para los filtros */
+.headerPagos > div {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+/* Estilos para métodos de pago */
+.metodo-efectivo {
+  color: #28a745;
+}
+
+.metodo-transferencia {
+  color: #007bff;
+}
+
+.metodo-tarjeta {
+  color: #6f42c1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .headerPagos {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+  
+  .headerPagos > div {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .headerPagos input {
+    width: 100%;
+  }
+  
+  table {
+    font-size: 14px;
+  }
+  
+  th, td {
+    padding: 8px;
+  }
+}
+
+/* Estilos para el modal */
+.modal-title {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.helper-text {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
 }

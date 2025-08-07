@@ -17,6 +17,13 @@ export const ClientForm = ({
     { label: "3 veces por semana", valor: 20000 },
   ];
 
+  const proporciones = [
+    { label: "Mes completo", factor: 1 },
+    { label: "3/4 del mes", factor: 0.75 },
+    { label: "1/2 mes", factor: 0.5 },
+    { label: "1/4 del mes", factor: 0.25 },
+  ];
+
   const [newClient, setNewClient] = useState({
     name: "",
     lastName: "",
@@ -25,94 +32,47 @@ export const ClientForm = ({
     phoneHelp: "",
     dni: "",
     actividad: "",
-    fechaInicio: new Date().toISOString().split("T")[0], // fecha actual por defecto
+    proporcion: 1,
     debt: 0,
     lastpay: "",
   });
 
-  // Cálculo proporcional con redondeo a múltiplos de 100
-  const calcularProporcional = (valorMensual, fechaInicio) => {
-    const inicio = new Date(fechaInicio);
-    const finMes = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0); // último día del mes
-    const diasRestantes = finMes.getDate() - inicio.getDate() + 1;
-    const diasMes = finMes.getDate();
-
-    // Cálculo proporcional
-    let proporcional = (valorMensual * diasRestantes) / diasMes;
-
-    // Redondear al múltiplo de 100 más cercano
-    proporcional = Math.round(proporcional / 100) * 100;
-
-    return proporcional;
+  const calcularDeuda = (actividadLabel, proporcion) => {
+    const actividad = actividades.find((a) => a.label === actividadLabel);
+    if (!actividad || proporcion == null) return 0;
+    return Math.round((actividad.valor * proporcion) / 100) * 100;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === "actividad") {
-      const selected = actividades.find((a) => a.label === value);
-      const updatedDebt = selected
-        ? calcularProporcional(
-            selected.valor,
-            clientSelected?.fechaInicio || newClient.fechaInicio
-          )
-        : 0;
+    let updatedActividad =
+      name === "actividad"
+        ? value
+        : clientSelected?.actividad || newClient.actividad;
 
-      if (clientSelected) {
-        setClientSelected({
-          ...clientSelected,
-          actividad: value,
-          debt: updatedDebt,
-        });
-      } else {
-        setNewClient({
-          ...newClient,
-          actividad: value,
-          debt: updatedDebt,
-        });
-      }
-    } else if (name === "fechaInicio") {
-      if (clientSelected) {
-        const updatedDebt = clientSelected.actividad
-          ? calcularProporcional(
-              actividades.find((a) => a.label === clientSelected.actividad)
-                ?.valor || 0,
-              value
-            )
-          : clientSelected.debt;
+    let updatedProporcion =
+      name === "proporcion"
+        ? parseFloat(value)
+        : clientSelected?.proporcion || newClient.proporcion;
 
-        setClientSelected({
-          ...clientSelected,
-          fechaInicio: value,
-          debt: updatedDebt,
-        });
-      } else {
-        const updatedDebt = newClient.actividad
-          ? calcularProporcional(
-              actividades.find((a) => a.label === newClient.actividad)?.valor ||
-                0,
-              value
-            )
-          : newClient.debt;
+    const updatedDebt = calcularDeuda(updatedActividad, updatedProporcion);
 
-        setNewClient({
-          ...newClient,
-          fechaInicio: value,
-          debt: updatedDebt,
-        });
-      }
+    const updatedValues = {
+      [name]: name === "proporcion" ? parseFloat(value) : value,
+      debt: updatedDebt,
+    };
+
+    if (clientSelected) {
+      setClientSelected({
+        ...clientSelected,
+        ...updatedValues,
+      });
     } else {
-      if (clientSelected) {
-        setClientSelected({
-          ...clientSelected,
-          [name]: value,
-        });
-      } else {
-        setNewClient({
-          ...newClient,
-          [name]: value,
-        });
-      }
+      setNewClient({
+        ...newClient,
+        ...updatedValues,
+      });
     }
   };
 
@@ -123,7 +83,6 @@ export const ClientForm = ({
     if (clientSelected) {
       await updateDoc(doc(clientsRef, clientSelected.id), clientSelected);
     } else {
-      // Se agrega el estado "Deudor" por defecto al crear un nuevo cliente
       await addDoc(clientsRef, {
         ...newClient,
         estado: "Deudor",
@@ -183,16 +142,6 @@ export const ClientForm = ({
         defaultValue={clientSelected?.dni}
       />
 
-      {/* Fecha de inicio */}
-      <TextField
-        type="date"
-        label="Fecha de inicio"
-        name="fechaInicio"
-        value={clientSelected?.fechaInicio || newClient.fechaInicio}
-        onChange={handleChange}
-        InputLabelProps={{ shrink: true }}
-      />
-
       <TextField
         select
         label="Actividad"
@@ -204,6 +153,24 @@ export const ClientForm = ({
         {actividades.map((actividad) => (
           <MenuItem key={actividad.label} value={actividad.label}>
             {actividad.label} - ${actividad.valor}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      <TextField
+        select
+        label="Inicio del mes"
+        name="proporcion"
+        value={
+          clientSelected?.proporcion?.toString() ||
+          newClient.proporcion.toString()
+        }
+        onChange={handleChange}
+        fullWidth
+      >
+        {proporciones.map((p) => (
+          <MenuItem key={p.label} value={p.factor}>
+            {p.label}
           </MenuItem>
         ))}
       </TextField>

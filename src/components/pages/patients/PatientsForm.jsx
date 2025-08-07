@@ -1,4 +1,155 @@
-import { Button, TextField } from "@mui/material";
+// import { Button, TextField, MenuItem } from "@mui/material";
+// import { useState } from "react";
+// import { db } from "../../../firebaseConfig";
+// import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
+
+// export const PatientForm = ({
+//   handleClose,
+//   setIsChange,
+//   patientSelected,
+//   setPatientSelected,
+// }) => {
+//   const [isUploading, setIsUploading] = useState(false);
+
+//   const kinesio = 10000;
+
+//   const [newPatient, setNewPatient] = useState({
+//     name: "",
+//     lastName: "",
+//     phone: "",
+//     address: "",
+//     phoneHelp: "",
+//     dni: "",
+//     actividad: "",
+//     proporcion: 1,
+//     debt: 0,
+//     lastpay: "",
+//   });
+
+//   const calcularDeuda = () => {};
+
+//   const handleChange = (e) => {
+//     const { name, value } = e.target;
+
+//     let updatedActividad =
+//       name === "actividad"
+//         ? value
+//         : patientSelected?.actividad || newPatient.actividad;
+
+//     let updatedProporcion =
+//       name === "proporcion"
+//         ? parseFloat(value)
+//         : patientSelected?.proporcion || newPatient.proporcion;
+
+//     const updatedDebt = calcularDeuda(updatedActividad, updatedProporcion);
+
+//     const updatedValues = {
+//       [name]: name === "proporcion" ? parseFloat(value) : value,
+//       debt: updatedDebt,
+//     };
+
+//     if (patientSelected) {
+//       setPatientSelected({
+//         ...patientSelected,
+//         ...updatedValues,
+//       });
+//     } else {
+//       setNewPatient({
+//         ...newPatient,
+//         ...updatedValues,
+//       });
+//     }
+//   };
+
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     const patientsRef = collection(db, "patients");
+
+//     if (patientSelected) {
+//       await updateDoc(doc(patientsRef, patientSelected.id), patientSelected);
+//     } else {
+//       await addDoc(patientsRef, {
+//         ...newPatient,
+//         estado: "Deudor",
+//       });
+//     }
+
+//     setIsChange(true);
+//     handleClose();
+//   };
+
+//   return (
+//     <form
+//       onSubmit={handleSubmit}
+//       style={{
+//         display: "flex",
+//         flexDirection: "column",
+//         justifyContent: "center",
+//         gap: 10,
+//       }}
+//     >
+//       <h1>{patientSelected ? "Editar Paciente" : "Nuevo Paciente"}</h1>
+
+//       <TextField
+//         label="Nombre"
+//         name="name"
+//         onChange={handleChange}
+//         defaultValue={patientSelected?.name}
+//       />
+//       <TextField
+//         label="Apellido"
+//         name="lastName"
+//         onChange={handleChange}
+//         defaultValue={patientSelected?.lastName}
+//       />
+//       <TextField
+//         label="Celular"
+//         name="phone"
+//         onChange={handleChange}
+//         defaultValue={patientSelected?.phone}
+//       />
+//       <TextField
+//         label="2do Celular"
+//         name="phoneHelp"
+//         onChange={handleChange}
+//         defaultValue={patientSelected?.phoneHelp}
+//       />
+//       <TextField
+//         label="Dirección"
+//         name="address"
+//         onChange={handleChange}
+//         defaultValue={patientSelected?.address}
+//       />
+//       <TextField
+//         label="DNI"
+//         name="dni"
+//         onChange={handleChange}
+//         defaultValue={patientSelected?.dni}
+//       />
+
+//       <p>
+//         <strong>Deuda estimada:</strong> $
+//         {patientSelected?.debt || newPatient.debt}
+//       </p>
+
+//       <div
+//         style={{
+//           display: "flex",
+//           justifyContent: "space-around",
+//           marginTop: 20,
+//         }}
+//       >
+//         <Button variant="contained" type="submit" disabled={isUploading}>
+//           {patientSelected ? "Modificar" : "Crear"}
+//         </Button>
+//         <Button variant="contained" onClick={handleClose}>
+//           Cancelar
+//         </Button>
+//       </div>
+//     </form>
+//   );
+// };
+import { Button, TextField, MenuItem } from "@mui/material";
 import { useState } from "react";
 import { db } from "../../../firebaseConfig";
 import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
@@ -10,6 +161,7 @@ export const PatientForm = ({
   setPatientSelected,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const kinesio = 10000;
 
   const [newPatient, setNewPatient] = useState({
     name: "",
@@ -17,111 +169,139 @@ export const PatientForm = ({
     phone: "",
     address: "",
     phoneHelp: "",
-    socialWork: "",
+    dni: "",
+    actividad: "",
+    sessions: 1,
+    debt: kinesio,
+    lastpay: "",
   });
 
-  //formik hacer
+  const calcularDeuda = (sessions) => {
+    return sessions * kinesio;
+  };
+
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    let updatedSessions =
+      name === "sessions"
+        ? parseInt(value) || 0
+        : patientSelected?.sessions || newPatient.sessions;
+
+    const updatedDebt = calcularDeuda(updatedSessions);
+
+    const updatedValues = {
+      [name]: name === "sessions" ? parseInt(value) || 0 : value,
+      debt: updatedDebt,
+    };
+
     if (patientSelected) {
       setPatientSelected({
         ...patientSelected,
-        [e.target.name]: e.target.value,
+        ...updatedValues,
       });
     } else {
-      setNewPatient({ ...newPatient, [e.target.name]: e.target.value });
+      setNewPatient({
+        ...newPatient,
+        ...updatedValues,
+      });
     }
   };
 
-  //formik hacer
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const patientsCollection = collection(db, "patient");
+    const patientsRef = collection(db, "patients");
 
     if (patientSelected) {
-      let obj = {
-        ...patientSelected,
-      };
-      updateDoc(doc(patientsCollection, patientSelected.id), obj).then(() => {
-        setIsChange(true);
-        handleClose();
-      });
+      await updateDoc(doc(patientsRef, patientSelected.id), patientSelected);
     } else {
-      let obj = {
+      await addDoc(patientsRef, {
         ...newPatient,
-      };
-      addDoc(patientsCollection, obj).then(() => {
-        setIsChange(true);
-        handleClose();
+        estado: "Deudor",
       });
     }
+
+    setIsChange(true);
+    handleClose();
   };
 
   return (
-    <div>
-      <form
-        onSubmit={handleSubmit}
+    <form
+      onSubmit={handleSubmit}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: 10,
+      }}
+    >
+      <h1>{patientSelected ? "Editar Paciente" : "Nuevo Paciente"}</h1>
+
+      <TextField
+        label="Nombre"
+        name="name"
+        onChange={handleChange}
+        defaultValue={patientSelected?.name}
+      />
+      <TextField
+        label="Apellido"
+        name="lastName"
+        onChange={handleChange}
+        defaultValue={patientSelected?.lastName}
+      />
+      <TextField
+        label="Celular"
+        name="phone"
+        onChange={handleChange}
+        defaultValue={patientSelected?.phone}
+      />
+      <TextField
+        label="2do Celular"
+        name="phoneHelp"
+        onChange={handleChange}
+        defaultValue={patientSelected?.phoneHelp}
+      />
+      <TextField
+        label="Dirección"
+        name="address"
+        onChange={handleChange}
+        defaultValue={patientSelected?.address}
+      />
+      <TextField
+        label="DNI"
+        name="dni"
+        onChange={handleChange}
+        defaultValue={patientSelected?.dni}
+      />
+
+      <TextField
+        label="Cantidad de sesiones"
+        name="sessions"
+        type="number"
+        onChange={handleChange}
+        defaultValue={patientSelected?.sessions || 1}
+        inputProps={{ min: 1 }}
+      />
+
+      <p>
+        <strong>Deuda estimada:</strong> $
+        {patientSelected?.debt || newPatient.debt}
+      </p>
+
+      <div
         style={{
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alingItems: "center",
-          gap: 10,
+          justifyContent: "space-around",
+          marginTop: 20,
         }}
       >
-        {!patientSelected ? <h1>Nuevo Paciente</h1> : <h1>Editar</h1>}
-
-        <TextField
-          label="Nombre"
-          name="name"
-          onChange={handleChange}
-          defaultValue={patientSelected?.name}
-        />
-        <TextField
-          label="Apellido"
-          name="lastName"
-          onChange={handleChange}
-          defaultValue={patientSelected?.lastName}
-        />
-        <TextField
-          label="Celular"
-          name="phone"
-          onChange={handleChange}
-          defaultValue={patientSelected?.phone}
-        />
-        <TextField
-          label="2do celular"
-          name="phoneHelp"
-          onChange={handleChange}
-          defaultValue={patientSelected?.phoneHelp}
-        />
-        <TextField
-          label="Dirección"
-          name="address"
-          onChange={handleChange}
-          defaultValue={patientSelected?.address}
-        />
-        <TextField
-          label="Obra Social"
-          name="socialWork"
-          onChange={handleChange}
-          defaultValue={patientSelected?.address}
-        />
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-around",
-            marginTop: 20,
-          }}
-        >
-          <Button variant="contained" type="submit" disabled={isUploading}>
-            {patientSelected ? "Modificar" : "Crear"}
-          </Button>
-          <Button variant="contained" onClick={() => handleClose()}>
-            Cancelar
-          </Button>
-        </div>
-      </form>
-    </div>
+        <Button variant="contained" type="submit" disabled={isUploading}>
+          {patientSelected ? "Modificar" : "Crear"}
+        </Button>
+        <Button variant="contained" onClick={handleClose}>
+          Cancelar
+        </Button>
+      </div>
+    </form>
   );
 };

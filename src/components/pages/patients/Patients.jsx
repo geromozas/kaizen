@@ -1,31 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { db } from "../../../firebaseConfig";
-import { useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
-import { PatientsList } from "./PatientsList";
+import PatientsList from "./PatientsList";
 import "./Patients.css";
 
-const Clients = () => {
+const Patients = () => {
   const [patients, setPatients] = useState([]);
   const [isChange, setIsChange] = useState(false);
 
   useEffect(() => {
     setIsChange(false);
-    let patientsCollections = collection(db, "patients");
-    getDocs(patientsCollections).then((res) => {
-      const newArr = res.docs.map((patient) => {
-        return {
-          ...patient.data(),
-          id: patient.id,
-        };
-      });
+    let patientsCollection = collection(db, "patients");
+    getDocs(patientsCollection).then((res) => {
+      const newArr = res.docs.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+      }));
       setPatients(newArr);
     });
   }, [isChange]);
 
   return (
-    <div id="boxPatients">
-      <div className="firtsBoxPatients">
+    <div id="boxClients">
+      <div className="firtsBoxClient">
         <div>
           <h1>Pacientes</h1>
           <p>Gestiona la información de tus pacientes</p>
@@ -38,4 +35,4 @@ const Clients = () => {
   );
 };
 
-export default Clients;
+export default Patients;

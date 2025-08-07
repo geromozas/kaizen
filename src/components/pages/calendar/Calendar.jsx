@@ -139,7 +139,8 @@ const Calendar = () => {
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-around" }}>
+      {/* <div style={{ display: "flex", justifyContent: "space-around" }}> */}
+      <div className="calendar-container">
         <div style={{ padding: 10 }} className="secondBoxPatients">
           <h2>Calendario</h2>
           <p>Selecciona una fecha para ver o programar horarios</p>

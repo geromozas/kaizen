@@ -1,22 +1,25 @@
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
-import { Button, IconButton, TextField } from "@mui/material";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Button,
+  IconButton,
+  TextField,
+  MenuItem,
+  Select,
+  Box,
+  Modal,
+} from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { db } from "../../../firebaseConfig";
 import { deleteDoc, doc } from "firebase/firestore";
-import Box from "@mui/material/Box";
-// import Typography from "@mui/material/Typography";
-import Modal from "@mui/material/Modal";
 import { useState } from "react";
 import { PatientForm } from "./PatientsForm";
-
-// import ProductForm from "./ProductForm";
 
 const style = {
   position: "absolute",
@@ -24,7 +27,7 @@ const style = {
   left: "50%",
   transform: "translate(-50%, -50%)",
   width: 800,
-  height: 500,
+  height: 750,
   bgcolor: "background.paper",
   border: "2px solid #000",
   borderRadius: 5,
@@ -32,108 +35,120 @@ const style = {
   p: 4,
 };
 
-export const PatientsList = ({ patients, setIsChange }) => {
+const actividadOptions = [
+  "1 vez por semana",
+  "2 veces por semana",
+  "3 veces por semana",
+];
+
+const PatientsList = ({ patients, setIsChange }) => {
   const [open, setOpen] = useState(false);
   const [patientSelected, setPatientSelected] = useState(null);
+  const [actividadFilter, setActividadFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const handleClose = () => {
-    setOpen(false);
-  };
-
-  const deletePatient = (id) => {
-    deleteDoc(doc(db, "patients", id));
-    console.log("el paciente con el id " + id + " se ha borrado");
-    alert("Paciente borrado");
-
-    setIsChange(true);
-  };
+  const handleClose = () => setOpen(false);
 
   const handleOpen = (patient) => {
     setPatientSelected(patient);
     setOpen(true);
   };
 
+  const deletePatient = (id) => {
+    deleteDoc(doc(db, "patients", id));
+    alert("Paciente eliminado");
+    setIsChange(true);
+  };
+
+  const filteredPatients = patients.filter((patient) => {
+    const matchesActividad = actividadFilter
+      ? patient.actividad === actividadFilter
+      : true;
+    const matchesSearch = `${patient.name} ${patient.lastName} ${patient.dni}`
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    return matchesActividad && matchesSearch;
+  });
+
   return (
     <div style={{ marginTop: 30 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <div style={{ marginLeft: 10, marginBottom: 15 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 15,
+        }}
+      >
+        <div style={{ marginLeft: 10 }}>
           <h2>Lista de pacientes</h2>
           <p>Pacientes registrados</p>
         </div>
         <div>
-          <Button
-            variant="contained"
-            style={{ marginBottom: 20, marginRight: 10 }}
-            onClick={() => handleOpen(null)}
+          <TextField
+            label="Buscar por nombre o DNI"
+            variant="outlined"
+            size="small"
+            sx={{ marginRight: 2 }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <Select
+            displayEmpty
+            size="small"
+            value={actividadFilter}
+            onChange={(e) => setActividadFilter(e.target.value)}
+            sx={{ width: 200, marginRight: 2 }}
           >
+            <MenuItem value="">Todas las actividades</MenuItem>
+            {actividadOptions.map((actividad) => (
+              <MenuItem key={actividad} value={actividad}>
+                {actividad}
+              </MenuItem>
+            ))}
+          </Select>
+          <Button variant="contained" onClick={() => handleOpen(null)}>
             + Nuevo paciente
           </Button>
-          <TextField
-            id="outlined-basic"
-            label="Buscar"
-            variant="outlined"
-            sx={{ marginRight: 5 }}
-          />
         </div>
       </div>
+
       <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} aria-label="simple table">
+        <Table sx={{ minWidth: 650 }} aria-label="tabla de pacientes">
           <TableHead>
             <TableRow>
-              {/* <TableCell align="left" style={{ fontWeight: "bold" }}>
-                ID
-              </TableCell> */}
-              <TableCell align="left" style={{ fontWeight: "bold" }}>
-                Nombre
-              </TableCell>
-              <TableCell align="left" style={{ fontWeight: "bold" }}>
-                Apellido
-              </TableCell>
-              <TableCell align="left" style={{ fontWeight: "bold" }}>
-                Celular
-              </TableCell>
-              <TableCell align="left" style={{ fontWeight: "bold" }}>
-                2do Celular
-              </TableCell>
-              <TableCell align="left" style={{ fontWeight: "bold" }}>
-                Dirección
-              </TableCell>
-              <TableCell align="left" style={{ fontWeight: "bold" }}>
-                Obra Social
-              </TableCell>
-              <TableCell align="left" style={{ fontWeight: "bold" }}>
-                ACCIONES
-              </TableCell>
+              <TableCell style={{ fontWeight: "bold" }}>Nombre</TableCell>
+              <TableCell style={{ fontWeight: "bold" }}>Apellido</TableCell>
+              <TableCell style={{ fontWeight: "bold" }}>DNI</TableCell>
+              <TableCell style={{ fontWeight: "bold" }}>Celular</TableCell>
+              <TableCell style={{ fontWeight: "bold" }}>2do Celular</TableCell>
+              <TableCell style={{ fontWeight: "bold" }}>Dirección</TableCell>
+              <TableCell style={{ fontWeight: "bold" }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {patients.map((patient) => (
-              <TableRow
-                key={patient.id}
-                sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-              >
-                {/* <TableCell component="th" scope="row" align="left">
-                  {patient.id}
-                </TableCell> */}
-                <TableCell component="th" scope="row" align="left">
+            {filteredPatients.map((patient) => (
+              <TableRow key={patient.id}>
+                <TableCell
+                  style={{
+                    color:
+                      patient.estado === "Deudor"
+                        ? "red"
+                        : patient.estado === "Inactivo"
+                        ? "goldenrod"
+                        : "green",
+                    fontWeight: "bold",
+                  }}
+                >
                   {patient.name}
                 </TableCell>
-                <TableCell component="th" scope="row" align="left">
-                  {patient.lastName}
-                </TableCell>
-                <TableCell component="th" scope="row" align="left">
-                  {patient.phone}
-                </TableCell>
-                <TableCell component="th" scope="row" align="left">
-                  {patient.phoneHelp}
-                </TableCell>
-                <TableCell component="th" scope="row" align="left">
-                  {patient.address}
-                </TableCell>
-                <TableCell component="th" scope="row" align="left">
-                  {patient.socialWork}
-                </TableCell>
-                <TableCell component="th" scope="row" align="left">
+                <TableCell>{patient.lastName}</TableCell>
+                <TableCell>{patient.dni}</TableCell>
+                <TableCell>{patient.phone}</TableCell>
+                <TableCell>{patient.phoneHelp}</TableCell>
+                <TableCell>{patient.address}</TableCell>
+
+                <TableCell>
                   <IconButton onClick={() => handleOpen(patient)}>
                     <EditIcon />
                   </IconButton>
@@ -146,12 +161,8 @@ export const PatientsList = ({ patients, setIsChange }) => {
           </TableBody>
         </Table>
       </TableContainer>
-      <Modal
-        open={open}
-        onClose={handleClose}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
-      >
+
+      <Modal open={open} onClose={handleClose}>
         <Box sx={style}>
           <PatientForm
             handleClose={handleClose}
@@ -164,3 +175,5 @@ export const PatientsList = ({ patients, setIsChange }) => {
     </div>
   );
 };
+
+export default PatientsList;

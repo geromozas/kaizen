@@ -27,6 +27,8 @@
   color: #0a7d37;
   padding: 4px 8px;
   border-radius: 10px;
+  font-weight: 500;
+  font-size: 12px;
 }
 
 .status.debt {
@@ -34,4 +36,60 @@
   color: #a94442;
   padding: 4px 8px;
   border-radius: 10px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.status.inactive {
+  background-color: #f0f0f0;
+  color: #666;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.selectEstado {
+  background-color: white;
+}
+
+/* Estilos para los tipos */
+.tipo.cliente {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.tipo.paciente {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.btn-inactivo {
+  font-size: 12px !important;
+  padding: 4px 8px !important;
+}
+
+.accountTable th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+.accountTable tbody tr:hover {
+  background-color: #f8f9fa;
 }
