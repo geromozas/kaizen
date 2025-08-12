@@ -17,7 +17,7 @@ const Home = () => {
     <div id="boxHome">
       <div className="homeTitle">
         <h1>Sistema de Gestión Kaizen</h1>
-        <h4>Bienvenido {user.name}</h4>
+        {/* <h4>Bienvenido {user.name}</h4> */}
       </div>
       <div className="boxSections">
         <Card sx={{ width: 275 }}>
