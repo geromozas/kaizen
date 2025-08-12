@@ -149,11 +149,18 @@
 //           date: selectedDate.toISOString().split("T")[0],
 //           hour: selectedHours[0],
 //           clients: clientsData,
+//           // Mantener el batchId existente si existe
+//           ...(editData.batchId && { batchId: editData.batchId }),
 //         };
 //         await setDoc(doc(db, "schedules", editData.id), data);
 //       } else {
 //         // Modo creación - crear múltiples horarios
 //         if (replicateToMonth) {
+//           // Generar un ID único para este lote de horarios
+//           const batchId = `batch_${Date.now()}_${Math.random()
+//             .toString(36)
+//             .substr(2, 9)}`;
+
 //           // Generar fechas del mes basadas en días seleccionados
 //           const dates = generateMonthlyDates(selectedDays, selectedDate);
 
@@ -167,6 +174,8 @@
 //                 date: date.toISOString().split("T")[0],
 //                 hour: hour,
 //                 clients: clientsData,
+//                 batchId: batchId, // Agregar el ID del lote
+//                 createdAt: new Date().toISOString(),
 //               };
 //               batch.set(scheduleRef, data);
 //             });
@@ -180,6 +189,7 @@
 //               date: selectedDate.toISOString().split("T")[0],
 //               hour: hour,
 //               clients: clientsData,
+//               createdAt: new Date().toISOString(),
 //             };
 //             await addDoc(collection(db, "schedules"), data);
 //           });
@@ -420,7 +430,11 @@ import {
   Chip,
   Paper,
   Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useEffect, useState } from "react";
 import {
   collection,
@@ -467,8 +481,9 @@ const NewScheduleModal = ({
   editData,
 }) => {
   const [clients, setClients] = useState([]);
-  const [selectedHours, setSelectedHours] = useState([]);
+  const [selectedHours, setSelectedHours] = useState([]); // Para modo edición
   const [selectedDays, setSelectedDays] = useState([]);
+  const [daySchedules, setDaySchedules] = useState({}); // Nuevo: horarios por día
   const [selectedClients, setSelectedClients] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [replicateToMonth, setReplicateToMonth] = useState(true);
@@ -496,12 +511,14 @@ const NewScheduleModal = ({
         )
       );
       setReplicateToMonth(false);
+      setDaySchedules({});
     } else {
       // Modo creación - valores por defecto
       setSelectedHours([]);
       setSelectedDays([]);
       setSelectedClients([]);
       setReplicateToMonth(true);
+      setDaySchedules({});
     }
   }, [editData, selectedDate]);
 
@@ -529,14 +546,34 @@ const NewScheduleModal = ({
   };
 
   const handleSave = async () => {
-    if (selectedHours.length === 0 || selectedClients.length === 0) {
-      alert("Por favor selecciona al menos un horario y un cliente");
+    if (selectedClients.length === 0) {
+      alert("Por favor selecciona al menos un cliente");
       return;
     }
 
-    if (!editData && selectedDays.length === 0) {
-      alert("Por favor selecciona al menos un día de la semana");
-      return;
+    if (editData) {
+      // Validación para modo edición
+      if (selectedHours.length === 0) {
+        alert("Por favor selecciona al menos un horario");
+        return;
+      }
+    } else {
+      // Validación para modo creación
+      if (selectedDays.length === 0) {
+        alert("Por favor selecciona al menos un día de la semana");
+        return;
+      }
+
+      // Verificar que cada día seleccionado tenga al menos un horario
+      const hasAllSchedules = selectedDays.every(
+        (dayValue) =>
+          daySchedules[dayValue] && daySchedules[dayValue].length > 0
+      );
+
+      if (!hasAllSchedules) {
+        alert("Por favor selecciona al menos un horario para cada día elegido");
+        return;
+      }
     }
 
     const clientsData = selectedClients.map((id) => ({
@@ -570,13 +607,16 @@ const NewScheduleModal = ({
           const batch = writeBatch(db);
 
           dates.forEach((date) => {
-            selectedHours.forEach((hour) => {
+            const dayOfWeek = date.getDay();
+            const hoursForDay = daySchedules[dayOfWeek] || [];
+
+            hoursForDay.forEach((hour) => {
               const scheduleRef = doc(collection(db, "schedules"));
               const data = {
                 date: date.toISOString().split("T")[0],
                 hour: hour,
                 clients: clientsData,
-                batchId: batchId, // Agregar el ID del lote
+                batchId: batchId,
                 createdAt: new Date().toISOString(),
               };
               batch.set(scheduleRef, data);
@@ -586,7 +626,10 @@ const NewScheduleModal = ({
           await batch.commit();
         } else {
           // Crear solo para la fecha seleccionada
-          selectedHours.forEach(async (hour) => {
+          const dayOfWeek = selectedDate.getDay();
+          const hoursForDay = daySchedules[dayOfWeek] || [];
+
+          for (const hour of hoursForDay) {
             const data = {
               date: selectedDate.toISOString().split("T")[0],
               hour: hour,
@@ -594,7 +637,7 @@ const NewScheduleModal = ({
               createdAt: new Date().toISOString(),
             };
             await addDoc(collection(db, "schedules"), data);
-          });
+          }
         }
       }
 
@@ -603,6 +646,7 @@ const NewScheduleModal = ({
       setSelectedHours([]);
       setSelectedDays([]);
       setSelectedClients([]);
+      setDaySchedules({});
       setSearchTerm("");
       setReplicateToMonth(true);
       refresh();
@@ -618,11 +662,25 @@ const NewScheduleModal = ({
   };
 
   const handleDayChange = (dayValue) => {
-    setSelectedDays((prev) =>
-      prev.includes(dayValue)
-        ? prev.filter((day) => day !== dayValue)
-        : [...prev, dayValue]
-    );
+    setSelectedDays((prev) => {
+      if (prev.includes(dayValue)) {
+        // Si se deselecciona un día, también limpiar sus horarios
+        const newDaySchedules = { ...daySchedules };
+        delete newDaySchedules[dayValue];
+        setDaySchedules(newDaySchedules);
+        return prev.filter((day) => day !== dayValue);
+      } else {
+        return [...prev, dayValue];
+      }
+    });
+  };
+
+  // Nueva función para manejar horarios por día
+  const handleDayScheduleChange = (dayValue, hours) => {
+    setDaySchedules((prev) => ({
+      ...prev,
+      [dayValue]: hours,
+    }));
   };
 
   // Filtrado de clientes por nombre o apellido
@@ -634,6 +692,14 @@ const NewScheduleModal = ({
 
   const getDayName = (dayValue) => {
     return daysOfWeek.find((d) => d.value === dayValue)?.label || "";
+  };
+
+  // Calcular total de horarios que se crearán
+  const getTotalSchedules = () => {
+    return selectedDays.reduce((total, dayValue) => {
+      const hoursForDay = daySchedules[dayValue] || [];
+      return total + hoursForDay.length;
+    }, 0);
   };
 
   return (
@@ -662,31 +728,79 @@ const NewScheduleModal = ({
                   />
                 ))}
               </FormGroup>
-              {selectedDays.length > 0 && (
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="body2" color="textSecondary">
-                    Días seleccionados:
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 0.5,
-                      mt: 0.5,
-                    }}
-                  >
-                    {selectedDays.map((dayValue) => (
-                      <Chip
-                        key={dayValue}
-                        label={getDayName(dayValue)}
-                        size="small"
-                        color="primary"
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              )}
             </Paper>
+
+            {/* Horarios por día */}
+            {selectedDays.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Horarios por Día
+                </Typography>
+                {selectedDays.map((dayValue) => (
+                  <Accordion key={dayValue} sx={{ mb: 1 }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography sx={{ fontWeight: "medium" }}>
+                        {getDayName(dayValue)}
+                        {daySchedules[dayValue] &&
+                          daySchedules[dayValue].length > 0 && (
+                            <Chip
+                              label={`${daySchedules[dayValue].length} horario${
+                                daySchedules[dayValue].length > 1 ? "s" : ""
+                              }`}
+                              size="small"
+                              color="primary"
+                              sx={{ ml: 2 }}
+                            />
+                          )}
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <FormControl fullWidth>
+                        <InputLabel>Seleccionar horarios</InputLabel>
+                        <Select
+                          multiple
+                          value={daySchedules[dayValue] || []}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            const hours =
+                              typeof value === "string"
+                                ? value.split(",")
+                                : value;
+                            handleDayScheduleChange(dayValue, hours);
+                          }}
+                          input={<OutlinedInput label="Seleccionar horarios" />}
+                          renderValue={(selected) => (
+                            <Box
+                              sx={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 0.5,
+                              }}
+                            >
+                              {selected.map((value) => (
+                                <Chip key={value} label={value} size="small" />
+                              ))}
+                            </Box>
+                          )}
+                        >
+                          {availableHours.map((hour) => (
+                            <MenuItem key={hour} value={hour}>
+                              <Checkbox
+                                checked={
+                                  (daySchedules[dayValue] || []).indexOf(hour) >
+                                  -1
+                                }
+                              />
+                              {hour}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              </Box>
+            )}
 
             <FormControlLabel
               control={
@@ -706,35 +820,30 @@ const NewScheduleModal = ({
           </>
         )}
 
-        <FormControl fullWidth margin="normal">
-          <InputLabel>
-            {editData ? "Seleccionar hora" : "Seleccionar horarios"}
-          </InputLabel>
-          <Select
-            multiple={!editData}
-            value={selectedHours}
-            onChange={handleHourChange}
-            input={
-              <OutlinedInput
-                label={editData ? "Seleccionar hora" : "Seleccionar horarios"}
-              />
-            }
-            renderValue={(selected) => (
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                {selected.map((value) => (
-                  <Chip key={value} label={value} size="small" />
-                ))}
-              </Box>
-            )}
-          >
-            {availableHours.map((hour) => (
-              <MenuItem key={hour} value={hour}>
-                <Checkbox checked={selectedHours.indexOf(hour) > -1} />
-                {hour}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        {/* Horarios para modo edición */}
+        {editData && (
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Seleccionar hora</InputLabel>
+            <Select
+              value={selectedHours}
+              onChange={handleHourChange}
+              input={<OutlinedInput label="Seleccionar hora" />}
+              renderValue={(selected) => (
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                  {selected.map((value) => (
+                    <Chip key={value} label={value} size="small" />
+                  ))}
+                </Box>
+              )}
+            >
+              {availableHours.map((hour) => (
+                <MenuItem key={hour} value={hour}>
+                  {hour}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
 
         <TextField
           fullWidth
@@ -773,19 +882,30 @@ const NewScheduleModal = ({
           </FormGroup>
         </Paper>
 
-        {!editData && selectedDays.length > 0 && selectedHours.length > 0 && (
+        {!editData && selectedDays.length > 0 && getTotalSchedules() > 0 && (
           <Box sx={{ mt: 2, p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
             <Typography variant="body2" color="textSecondary">
-              <strong>Resumen:</strong> Se crearán{" "}
-              {selectedDays.length * selectedHours.length} horarios
+              <strong>Resumen:</strong> Se crearán {getTotalSchedules()}{" "}
+              horarios
               {replicateToMonth && " para todo el mes"}
             </Typography>
             <Typography variant="body2" color="textSecondary">
               Días: {selectedDays.map((d) => getDayName(d)).join(", ")}
             </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Horarios: {selectedHours.join(", ")}
-            </Typography>
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="body2" color="textSecondary">
+                <strong>Distribución por día:</strong>
+              </Typography>
+              {selectedDays.map((dayValue) => {
+                const hours = daySchedules[dayValue] || [];
+                return (
+                  <Typography key={dayValue} variant="caption" display="block">
+                    • {getDayName(dayValue)}:{" "}
+                    {hours.join(", ") || "Sin horarios"}
+                  </Typography>
+                );
+              })}
+            </Box>
           </Box>
         )}
       </DialogContent>
@@ -799,9 +919,10 @@ const NewScheduleModal = ({
           variant="contained"
           style={{ backgroundColor: "green" }}
           disabled={
-            selectedHours.length === 0 ||
             selectedClients.length === 0 ||
-            (!editData && selectedDays.length === 0)
+            (editData && selectedHours.length === 0) ||
+            (!editData &&
+              (selectedDays.length === 0 || getTotalSchedules() === 0))
           }
         >
           {editData ? "Actualizar" : "Crear Horarios"}
