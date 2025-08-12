@@ -48,17 +48,37 @@ const AccountStatus = () => {
     fetchData();
   }, []);
 
+  // const toggleInactivo = async (person) => {
+  //   const nuevoEstado =
+  //     person.estado === "Inactivo"
+  //       ? person.debt > 0
+  //         ? "Deudor"
+  //         : "Al día"
+  //       : "Inactivo";
+
+  //   await updateDoc(doc(db, person.collection, person.id), {
+  //     estado: nuevoEstado,
+  //   });
+  //   fetchData();
+  // };
   const toggleInactivo = async (person) => {
-    const nuevoEstado =
-      person.estado === "Inactivo"
-        ? person.debt > 0
-          ? "Deudor"
-          : "Al día"
-        : "Inactivo";
+    let nuevoEstado;
+    let nuevaDeuda = person.debt || 0;
+
+    if (person.estado === "Inactivo") {
+      // Reactivar: vuelve al estado anterior según deuda
+      nuevoEstado = person.debt > 0 ? "Deudor" : "Al día";
+    } else {
+      // Poner inactivo: deuda en 0
+      nuevoEstado = "Inactivo";
+      nuevaDeuda = 0;
+    }
 
     await updateDoc(doc(db, person.collection, person.id), {
       estado: nuevoEstado,
+      debt: nuevaDeuda,
     });
+
     fetchData();
   };
 

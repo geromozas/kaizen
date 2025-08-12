@@ -32,7 +32,7 @@ const Clients = () => {
         </div>
       </div>
       <div className="secondBoxClient">
-        <ClientsList clients={clients} setIsChange={setIsChange} />
+        <ClientsList clients={clients || []} setIsChange={setIsChange} />
       </div>
     </div>
   );

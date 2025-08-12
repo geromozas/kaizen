@@ -1,7 +1,8 @@
 import { Button, TextField, MenuItem } from "@mui/material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { db } from "../../../firebaseConfig";
 import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
+import { useActivities } from "../activities/useActivities";
 
 export const ClientForm = ({
   handleClose,
@@ -10,12 +11,7 @@ export const ClientForm = ({
   setClientSelected,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
-
-  const actividades = [
-    { label: "1 vez por semana", valor: 10000 },
-    { label: "2 veces por semana", valor: 15000 },
-    { label: "3 veces por semana", valor: 20000 },
-  ];
+  const { activities, loading: activitiesLoading } = useActivities();
 
   const proporciones = [
     { label: "Mes completo", factor: 1 },
@@ -38,7 +34,7 @@ export const ClientForm = ({
   });
 
   const calcularDeuda = (actividadLabel, proporcion) => {
-    const actividad = actividades.find((a) => a.label === actividadLabel);
+    const actividad = activities.find((a) => a.label === actividadLabel);
     if (!actividad || proporcion == null) return 0;
     return Math.round((actividad.valor * proporcion) / 100) * 100;
   };
@@ -78,20 +74,45 @@ export const ClientForm = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const clientsRef = collection(db, "clients");
+    setIsUploading(true);
 
-    if (clientSelected) {
-      await updateDoc(doc(clientsRef, clientSelected.id), clientSelected);
-    } else {
-      await addDoc(clientsRef, {
-        ...newClient,
-        estado: "Deudor",
-      });
+    try {
+      const clientsRef = collection(db, "clients");
+
+      if (clientSelected) {
+        await updateDoc(doc(clientsRef, clientSelected.id), clientSelected);
+      } else {
+        await addDoc(clientsRef, {
+          ...newClient,
+          estado: "Deudor",
+        });
+      }
+
+      setIsChange(true);
+      handleClose();
+    } catch (error) {
+      console.error("Error al guardar cliente:", error);
+      alert("Error al guardar el cliente");
+    } finally {
+      setIsUploading(false);
     }
-
-    setIsChange(true);
-    handleClose();
   };
+
+  // Recalcular deuda cuando se carga un cliente existente
+  useEffect(() => {
+    if (clientSelected && activities.length > 0) {
+      const debt = calcularDeuda(
+        clientSelected.actividad,
+        clientSelected.proporcion
+      );
+      if (debt !== clientSelected.debt) {
+        setClientSelected({
+          ...clientSelected,
+          debt: debt,
+        });
+      }
+    }
+  }, [clientSelected, activities]);
 
   return (
     <form
@@ -110,18 +131,21 @@ export const ClientForm = ({
         name="name"
         onChange={handleChange}
         defaultValue={clientSelected?.name}
+        required
       />
       <TextField
         label="Apellido"
         name="lastName"
         onChange={handleChange}
         defaultValue={clientSelected?.lastName}
+        required
       />
       <TextField
         label="Celular"
         name="phone"
         onChange={handleChange}
         defaultValue={clientSelected?.phone}
+        required
       />
       <TextField
         label="2do Celular"
@@ -140,6 +164,7 @@ export const ClientForm = ({
         name="dni"
         onChange={handleChange}
         defaultValue={clientSelected?.dni}
+        required
       />
 
       <TextField
@@ -149,12 +174,18 @@ export const ClientForm = ({
         value={clientSelected?.actividad || newClient.actividad}
         onChange={handleChange}
         fullWidth
+        required
+        disabled={activitiesLoading}
       >
-        {actividades.map((actividad) => (
-          <MenuItem key={actividad.label} value={actividad.label}>
-            {actividad.label} - ${actividad.valor}
-          </MenuItem>
-        ))}
+        {activitiesLoading ? (
+          <MenuItem disabled>Cargando actividades...</MenuItem>
+        ) : (
+          activities.map((actividad) => (
+            <MenuItem key={actividad.id} value={actividad.label}>
+              {actividad.label} - ${actividad.valor.toLocaleString()}
+            </MenuItem>
+          ))
+        )}
       </TextField>
 
       <TextField
@@ -167,6 +198,7 @@ export const ClientForm = ({
         }
         onChange={handleChange}
         fullWidth
+        required
       >
         {proporciones.map((p) => (
           <MenuItem key={p.label} value={p.factor}>
@@ -177,7 +209,7 @@ export const ClientForm = ({
 
       <p>
         <strong>Deuda estimada:</strong> $
-        {clientSelected?.debt || newClient.debt}
+        {(clientSelected?.debt || newClient.debt).toLocaleString()}
       </p>
 
       <div
@@ -187,8 +219,16 @@ export const ClientForm = ({
           marginTop: 20,
         }}
       >
-        <Button variant="contained" type="submit" disabled={isUploading}>
-          {clientSelected ? "Modificar" : "Crear"}
+        <Button
+          variant="contained"
+          type="submit"
+          disabled={isUploading || activitiesLoading}
+        >
+          {isUploading
+            ? "Guardando..."
+            : clientSelected
+            ? "Modificar"
+            : "Crear"}
         </Button>
         <Button variant="contained" onClick={handleClose}>
           Cancelar
