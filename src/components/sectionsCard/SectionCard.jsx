@@ -1,17 +1,12 @@
 import Card from "@mui/material/Card";
 import CardActions from "@mui/material/CardActions";
 import CardContent from "@mui/material/CardContent";
-// import CardMedia from "@mui/material/CardMedia";
+
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import { Link } from "react-router-dom";
 
-export default function SectionCard({
-  // image,
-  title,
-  description,
-  id,
-}) {
+export default function SectionCard({ title, description, id }) {
   return (
     <Card
       className="sectionCard"
@@ -30,19 +25,12 @@ export default function SectionCard({
         },
       }}
     >
-      {/* <CardMedia
-        sx={{ height: 200 }}
-        image={image}
-        title="imagen del producto"
-      /> */}
-
       <CardContent>
         <Typography
           gutterBottom
           variant="h5"
           component="div"
           sx={{ height: 50 }}
-          // style={{ marginBottom: 10 }}
         >
           {title}
         </Typography>

@@ -3,6 +3,7 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import GroupIcon from "@mui/icons-material/Group";
 import PaymentIcon from "@mui/icons-material/Payment";
 import AssessmentIcon from "@mui/icons-material/Assessment";
+import AccessibilityIcon from "@mui/icons-material/Accessibility";
 
 export const menuItems = [
   {
@@ -22,6 +23,12 @@ export const menuItems = [
     path: "/patients",
     title: "Pacientes",
     Icon: GroupIcon,
+  },
+  {
+    id: "quiropraxia",
+    path: "/quiropraxia",
+    title: "Quiropraxia",
+    Icon: AccessibilityIcon,
   },
   {
     id: "calendar",

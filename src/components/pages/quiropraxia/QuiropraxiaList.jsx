@@ -23,7 +23,7 @@ import Modal from "@mui/material/Modal";
 import { useState } from "react";
 import { useActivities } from "../activities/useActivities";
 import { db } from "../../../firebaseConfig";
-import { ClientForm } from "./ClientForm";
+import { QuiropraxiaForm } from "./QuiropraxiaForm";
 import { ActivityPricesManager } from "../activities/ActivityPricesManager";
 
 const style = {
@@ -39,11 +39,11 @@ const style = {
   p: 4,
 };
 
-const ClientsList = ({ clients = [], setIsChange }) => {
+const QuiropraxiaList = ({ patients = [], setIsChange }) => {
   const [openForm, setOpenForm] = useState(false);
   const [openProfile, setOpenProfile] = useState(false);
   const [openPricesManager, setOpenPricesManager] = useState(false);
-  const [clientSelected, setClientSelected] = useState(null);
+  const [patientSelected, setPatientSelected] = useState(null);
   const [actividadFilter, setActividadFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -53,13 +53,13 @@ const ClientsList = ({ clients = [], setIsChange }) => {
   const handleCloseProfile = () => setOpenProfile(false);
   const handleClosePricesManager = () => setOpenPricesManager(false);
 
-  const handleOpenForm = (client) => {
-    setClientSelected(client);
+  const handleOpenForm = (patient) => {
+    setPatientSelected(patient);
     setOpenForm(true);
   };
 
-  const handleOpenProfile = (client) => {
-    setClientSelected(client);
+  const handleOpenProfile = (patient) => {
+    setPatientSelected(patient);
     setOpenProfile(true);
   };
 
@@ -69,26 +69,26 @@ const ClientsList = ({ clients = [], setIsChange }) => {
 
   const handleActivityUpdate = () => {
     reloadActivities();
-    setIsChange(true); // Para refrescar la lista de clientes también
+    setIsChange(true); // Para refrescar la lista de pacientes también
   };
 
-  const deleteClient = (id) => {
-    if (confirm("¿Estás seguro de que quieres eliminar este alumno?")) {
-      deleteDoc(doc(db, "clients", id));
-      alert("Alumno borrado");
+  const deletePatient = (id) => {
+    if (confirm("¿Estás seguro de que quieres eliminar este paciente?")) {
+      deleteDoc(doc(db, "quiropraxia", id));
+      alert("Paciente borrado");
       setIsChange(true);
     }
   };
 
   // Verificación de seguridad para evitar el error de filter
-  const filteredClients = Array.isArray(clients)
-    ? clients.filter((client) => {
+  const filteredPatients = Array.isArray(patients)
+    ? patients.filter((patient) => {
         const matchesActividad = actividadFilter
-          ? client.actividad === actividadFilter
+          ? patient.actividad === actividadFilter
           : true;
-        const matchesSearch = `${client.name || ""} ${client.lastName || ""} ${
-          client.dni || ""
-        }`
+        const matchesSearch = `${patient.name || ""} ${
+          patient.lastName || ""
+        } ${patient.dni || ""}`
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
         return matchesActividad && matchesSearch;
@@ -106,8 +106,8 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         }}
       >
         <div style={{ marginLeft: 10 }}>
-          <h2>Lista de alumnos</h2>
-          <p>Alumnos registrados</p>
+          <h2>Lista de pacientes</h2>
+          <p>Pacientes de quiropraxia registrados</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <TextField
@@ -124,7 +124,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
             onChange={(e) => setActividadFilter(e.target.value)}
             sx={{ width: 200 }}
           >
-            <MenuItem value="">Todas las actividades</MenuItem>
+            <MenuItem value="">Todos los servicios</MenuItem>
             {Array.isArray(activities) &&
               activities.map((actividad) => (
                 <MenuItem key={actividad.id} value={actividad.label}>
@@ -140,75 +140,78 @@ const ClientsList = ({ clients = [], setIsChange }) => {
             Gestionar Precios
           </Button>
           <Button variant="contained" onClick={() => handleOpenForm(null)}>
-            + Nuevo alumno
+            + Nuevo paciente
           </Button>
         </div>
       </div>
 
       <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} aria-label="tabla de alumnos">
+        <Table sx={{ minWidth: 650 }} aria-label="tabla de pacientes">
           <TableHead>
             <TableRow>
               <TableCell style={{ fontWeight: "bold" }}>Nombre</TableCell>
               <TableCell style={{ fontWeight: "bold" }}>Apellido</TableCell>
               <TableCell style={{ fontWeight: "bold" }}>DNI</TableCell>
               <TableCell style={{ fontWeight: "bold" }}>Celular</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>2do Celular</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>Dirección</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>Actividad</TableCell>
+              <TableCell style={{ fontWeight: "bold" }}>Condición</TableCell>
+              <TableCell style={{ fontWeight: "bold" }}>Servicio</TableCell>
+              <TableCell style={{ fontWeight: "bold" }}>Sesiones</TableCell>
               <TableCell style={{ fontWeight: "bold" }}>Deuda</TableCell>
               <TableCell style={{ fontWeight: "bold" }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredClients.map((client) => (
-              <TableRow key={client.id}>
+            {filteredPatients.map((patient) => (
+              <TableRow key={patient.id}>
                 <TableCell
                   style={{
                     color:
-                      client.estado === "Deudor"
+                      patient.estado === "Deudor"
                         ? "red"
-                        : client.estado === "Inactivo"
+                        : patient.estado === "Inactivo"
                         ? "goldenrod"
                         : "green",
                     fontWeight: "bold",
                     cursor: "pointer",
                   }}
-                  onClick={() => handleOpenProfile(client)}
+                  onClick={() => handleOpenProfile(patient)}
                 >
-                  {client.name}
+                  {patient.name}
                 </TableCell>
                 <TableCell
                   style={{ cursor: "pointer" }}
-                  onClick={() => handleOpenProfile(client)}
+                  onClick={() => handleOpenProfile(patient)}
                 >
-                  {client.lastName}
+                  {patient.lastName}
                 </TableCell>
-                <TableCell>{client.dni}</TableCell>
-                <TableCell>{client.phone}</TableCell>
-                <TableCell>{client.phoneHelp}</TableCell>
-                <TableCell>{client.address}</TableCell>
-                <TableCell>{client.actividad || "No asignada"}</TableCell>
+                <TableCell>{patient.dni}</TableCell>
+                <TableCell>{patient.phone}</TableCell>
+                <TableCell>{patient.condition || "No especificada"}</TableCell>
+                <TableCell>{patient.actividad || "No asignado"}</TableCell>
+                <TableCell style={{ textAlign: "center", fontWeight: "bold" }}>
+                  {patient.sesiones || 0}
+                </TableCell>
 
                 <TableCell
                   style={{
                     color:
-                      (client.estado === "Inactivo" ? 0 : client.debt || 0) > 0
+                      (patient.estado === "Inactivo" ? 0 : patient.debt || 0) >
+                      0
                         ? "red"
                         : "green",
                     fontWeight: "bold",
                   }}
                 >
                   $
-                  {client.estado === "Inactivo"
+                  {patient.estado === "Inactivo"
                     ? 0
-                    : (client.debt || 0).toLocaleString()}
+                    : (patient.debt || 0).toLocaleString()}
                 </TableCell>
                 <TableCell>
-                  <IconButton onClick={() => handleOpenForm(client)}>
+                  <IconButton onClick={() => handleOpenForm(patient)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton onClick={() => deleteClient(client.id)}>
+                  <IconButton onClick={() => deletePatient(patient.id)}>
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -220,12 +223,20 @@ const ClientsList = ({ clients = [], setIsChange }) => {
 
       {/* Modal de edición */}
       <Modal open={openForm} onClose={handleCloseForm}>
-        <Box sx={{ ...style, width: 800, height: 750 }}>
-          <ClientForm
+        <Box
+          sx={{
+            ...style,
+            width: 800,
+            maxHeight: "90vh",
+            overflow: "auto",
+            height: "auto",
+          }}
+        >
+          <QuiropraxiaForm
             handleClose={handleCloseForm}
             setIsChange={setIsChange}
-            clientSelected={clientSelected}
-            setClientSelected={setClientSelected}
+            patientSelected={patientSelected}
+            setPatientSelected={setPatientSelected}
           />
         </Box>
       </Modal>
@@ -238,53 +249,64 @@ const ClientsList = ({ clients = [], setIsChange }) => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 400,
+            width: 450,
+            maxHeight: "90vh",
+            overflow: "auto",
             bgcolor: "background.paper",
             boxShadow: 24,
             p: 4,
             borderRadius: 2,
           }}
         >
-          {clientSelected && (
+          {patientSelected && (
             <>
               <Typography
                 variant="h5"
                 gutterBottom
                 sx={{ fontWeight: "bold", textAlign: "center", mb: 3 }}
               >
-                Perfil de {clientSelected.name} {clientSelected.lastName}
+                Perfil de {patientSelected.name} {patientSelected.lastName}
               </Typography>
 
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 <Typography>
-                  <strong>DNI:</strong> {clientSelected.dni}
+                  <strong>DNI:</strong> {patientSelected.dni}
                 </Typography>
                 <Typography>
-                  <strong>Celular:</strong> {clientSelected.phone}
+                  <strong>Celular:</strong> {patientSelected.phone}
+                </Typography>
+
+                <Typography>
+                  <strong>Dirección:</strong> {patientSelected.address}
                 </Typography>
                 <Typography>
-                  <strong>2do Celular:</strong>{" "}
-                  {clientSelected.phoneHelp || "N/A"}
+                  <strong>Condición Médica:</strong>{" "}
+                  {patientSelected.condition || "No especificada"}
                 </Typography>
                 <Typography>
-                  <strong>Dirección:</strong> {clientSelected.address}
+                  <strong>Tratamiento:</strong>{" "}
+                  {patientSelected.treatment || "No especificado"}
                 </Typography>
                 <Typography>
-                  <strong>Actividad:</strong>{" "}
-                  {clientSelected.actividad || "No asignada"}
+                  <strong>Servicio:</strong>{" "}
+                  {patientSelected.actividad || "No asignado"}
                 </Typography>
                 <Typography>
-                  <strong>Estado:</strong> {clientSelected.estado}
+                  <strong>Sesiones programadas:</strong>{" "}
+                  {patientSelected.sesiones || 0}
+                </Typography>
+                <Typography>
+                  <strong>Estado:</strong> {patientSelected.estado}
                 </Typography>
                 <Typography
-                  color={clientSelected.debt > 0 ? "error" : "success.main"}
+                  color={patientSelected.debt > 0 ? "error" : "success.main"}
                 >
                   <strong>Deuda:</strong> $
-                  {(clientSelected.debt || 0).toLocaleString()}
+                  {(patientSelected.debt || 0).toLocaleString()}
                 </Typography>
                 <Typography>
                   <strong>Último pago:</strong>{" "}
-                  {clientSelected.ultimoPago || "Sin pagos"}
+                  {patientSelected.ultimoPago || "Sin pagos"}
                 </Typography>
               </Box>
             </>
@@ -302,4 +324,4 @@ const ClientsList = ({ clients = [], setIsChange }) => {
   );
 };
 
-export default ClientsList;
+export default QuiropraxiaList;

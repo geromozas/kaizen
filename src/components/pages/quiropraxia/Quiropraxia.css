@@ -1,0 +1,30 @@
+#boxQuiropraxia {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.firtsBoxQuiropraxia {
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+}
+
+.firtsBoxQuiropraxia h1 {
+  margin: 0;
+  color: #333;
+  font-size: 2rem;
+}
+
+.firtsBoxQuiropraxia p {
+  margin: 5px 0 0 0;
+  color: #666;
+  font-size: 1rem;
+}
+
+.secondBoxQuiropraxia {
+  flex: 1;
+  padding: 0 20px 20px 20px;
+  background-color: #fff;
+}

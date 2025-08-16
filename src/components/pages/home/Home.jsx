@@ -23,7 +23,7 @@ const Home = () => {
         <Card sx={{ width: 275 }}>
           <CardContent>
             <Typography gutterBottom sx={{ fontSize: 20 }}>
-              Alumnos
+              Gimnasio
             </Typography>
             <hr />
             <Typography
@@ -46,7 +46,7 @@ const Home = () => {
         <Card sx={{ width: 275 }}>
           <CardContent>
             <Typography gutterBottom sx={{ fontSize: 20 }}>
-              Pacientes Kinesio
+              Kinesio
             </Typography>
             <hr />
             <Typography
@@ -59,6 +59,28 @@ const Home = () => {
           </CardContent>
           <CardActions>
             <Link to={"/patients"}>
+              <Button size="small" variant="contained" color="primary">
+                VER
+              </Button>
+            </Link>
+          </CardActions>
+        </Card>
+        <Card sx={{ width: 275 }}>
+          <CardContent>
+            <Typography gutterBottom sx={{ fontSize: 20 }}>
+              Quiropraxia
+            </Typography>
+            <hr />
+            <Typography
+              variant="h8"
+              component="div"
+              sx={{ height: 70, marginTop: 5 }}
+            >
+              Gestiona la información de tus pacientes
+            </Typography>
+          </CardContent>
+          <CardActions>
+            <Link to={"/quiropraxia"}>
               <Button size="small" variant="contained" color="primary">
                 VER
               </Button>

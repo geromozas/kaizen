@@ -4,7 +4,7 @@ import { db } from "../../../firebaseConfig";
 import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
 import { useActivities } from "../activities/useActivities";
 
-export const PatientForm = ({
+export const QuiropraxiaForm = ({
   handleClose,
   setIsChange,
   patientSelected,
@@ -12,6 +12,8 @@ export const PatientForm = ({
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const { activities, loading: activitiesLoading } = useActivities();
+
+  // Removido las proporciones, ahora usaremos cantidad de sesiones
 
   const [newPatient, setNewPatient] = useState({
     name: "",
@@ -21,15 +23,17 @@ export const PatientForm = ({
     phoneHelp: "",
     dni: "",
     actividad: "",
-    sessions: 1,
+    sesiones: 1, // Cantidad de sesiones en lugar de proporción
     debt: 0,
     lastpay: "",
+    condition: "", // Condición médica específica para quiropraxia
+    treatment: "", // Tratamiento actual
   });
 
-  const calcularDeuda = (actividadLabel, sessions) => {
+  const calcularDeuda = (actividadLabel, sesiones) => {
     const actividad = activities.find((a) => a.label === actividadLabel);
-    if (!actividad || !sessions) return 0;
-    return Math.round((actividad.valor * sessions) / 100) * 100;
+    if (!actividad || sesiones == null || sesiones <= 0) return 0;
+    return actividad.valor * sesiones;
   };
 
   const handleChange = (e) => {
@@ -40,15 +44,15 @@ export const PatientForm = ({
         ? value
         : patientSelected?.actividad || newPatient.actividad;
 
-    let updatedSessions =
-      name === "sessions"
+    let updatedSesiones =
+      name === "sesiones"
         ? parseInt(value) || 0
-        : patientSelected?.sessions || newPatient.sessions;
+        : patientSelected?.sesiones || newPatient.sesiones;
 
-    const updatedDebt = calcularDeuda(updatedActividad, updatedSessions);
+    const updatedDebt = calcularDeuda(updatedActividad, updatedSesiones);
 
     const updatedValues = {
-      [name]: name === "sessions" ? parseInt(value) || 0 : value,
+      [name]: name === "sesiones" ? parseInt(value) || 0 : value,
       debt: updatedDebt,
     };
 
@@ -70,7 +74,7 @@ export const PatientForm = ({
     setIsUploading(true);
 
     try {
-      const patientsRef = collection(db, "patients");
+      const patientsRef = collection(db, "quiropraxia");
 
       if (patientSelected) {
         await updateDoc(doc(patientsRef, patientSelected.id), patientSelected);
@@ -96,7 +100,7 @@ export const PatientForm = ({
     if (patientSelected && activities.length > 0) {
       const debt = calcularDeuda(
         patientSelected.actividad,
-        patientSelected.sessions
+        patientSelected.sesiones
       );
       if (debt !== patientSelected.debt) {
         setPatientSelected({
@@ -140,12 +144,7 @@ export const PatientForm = ({
         defaultValue={patientSelected?.phone}
         required
       />
-      <TextField
-        label="2do Celular"
-        name="phoneHelp"
-        onChange={handleChange}
-        defaultValue={patientSelected?.phoneHelp}
-      />
+
       <TextField
         label="Dirección"
         name="address"
@@ -161,8 +160,28 @@ export const PatientForm = ({
       />
 
       <TextField
+        label="Condición Médica"
+        name="condition"
+        onChange={handleChange}
+        defaultValue={patientSelected?.condition}
+        multiline
+        rows={2}
+        placeholder="Ej: Dolor de espalda baja, Ciática, etc."
+      />
+
+      <TextField
+        label="Tratamiento"
+        name="treatment"
+        onChange={handleChange}
+        defaultValue={patientSelected?.treatment}
+        multiline
+        rows={2}
+        placeholder="Ej: Ajustes vertebrales, terapia manual, etc."
+      />
+
+      <TextField
         select
-        label="Actividad"
+        label="Servicio"
         name="actividad"
         value={patientSelected?.actividad || newPatient.actividad}
         onChange={handleChange}
@@ -171,7 +190,7 @@ export const PatientForm = ({
         disabled={activitiesLoading}
       >
         {activitiesLoading ? (
-          <MenuItem disabled>Cargando actividades...</MenuItem>
+          <MenuItem disabled>Cargando servicios...</MenuItem>
         ) : (
           activities.map((actividad) => (
             <MenuItem key={actividad.id} value={actividad.label}>
@@ -182,12 +201,15 @@ export const PatientForm = ({
       </TextField>
 
       <TextField
-        label="Cantidad de sesiones"
-        name="sessions"
+        label="Cantidad de Sesiones"
+        name="sesiones"
         type="number"
-        value={patientSelected?.sessions || newPatient.sessions}
+        value={patientSelected?.sesiones || newPatient.sesiones}
         onChange={handleChange}
-        inputProps={{ min: 1 }}
+        fullWidth
+        required
+        inputProps={{ min: 1, step: 1 }}
+        helperText="Número de sesiones programadas"
       />
 
       <p>

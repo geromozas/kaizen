@@ -17,12 +17,6 @@ const AppRouter = () => {
         </Route>
       </Route>
 
-      {/* <Route element={<ProtectedAdmin />}>
-        <Route element={<Layout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Route>
-      </Route> */}
-
       <Route path="/login" element={<Login />} />
 
       <Route path="/forgot-password" element={<ForgotPassword />} />
