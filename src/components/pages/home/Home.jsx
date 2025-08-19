@@ -16,7 +16,7 @@ const Home = () => {
   return (
     <div id="boxHome">
       <div className="homeTitle">
-        <h1>Sistema de Gestión Kaizen</h1>
+        <h1>SISTEMA DE GESTIÓN KAIZEN</h1>
         {/* <h4>Bienvenido {user.name}</h4> */}
       </div>
       <div className="boxSections">
