@@ -62,19 +62,28 @@ const AccountStatus = () => {
   const toggleInactivo = async (person) => {
     let nuevoEstado;
     let nuevaDeuda = person.debt || 0;
+    let nuevoSaldoFavor = person.saldoFavor || 0;
 
     if (person.estado === "Inactivo") {
-      // Reactivar: vuelve al estado anterior según deuda
-      nuevoEstado = person.debt > 0 ? "Deudor" : "Al día";
+      // Reactivar: vuelve al estado anterior según deuda/saldo
+      if (nuevoSaldoFavor > 0) {
+        nuevoEstado = "Saldo a favor";
+      } else if (nuevaDeuda > 0) {
+        nuevoEstado = "Deudor";
+      } else {
+        nuevoEstado = "Al día";
+      }
     } else {
-      // Poner inactivo: deuda en 0
+      // Poner inactivo: deuda en 0, saldo a favor en 0
       nuevoEstado = "Inactivo";
       nuevaDeuda = 0;
+      nuevoSaldoFavor = 0;
     }
 
     await updateDoc(doc(db, person.collection, person.id), {
       estado: nuevoEstado,
       debt: nuevaDeuda,
+      saldoFavor: nuevoSaldoFavor,
     });
 
     fetchData();
@@ -87,6 +96,48 @@ const AccountStatus = () => {
     });
 
     fetchData();
+  };
+
+  const eliminarSaldoFavor = async (person) => {
+    await updateDoc(doc(db, person.collection, person.id), {
+      estado: "Al día",
+      saldoFavor: 0,
+    });
+
+    fetchData();
+  };
+
+  const getEstadoDisplay = (person) => {
+    if (person.saldoFavor > 0) {
+      return "Saldo a favor";
+    }
+    return person.estado;
+  };
+
+  const getEstadoClass = (person) => {
+    if (person.saldoFavor > 0) {
+      return "favor";
+    }
+    switch (person.estado) {
+      case "Al día":
+        return "ok";
+      case "Inactivo":
+        return "inactive";
+      case "Deudor":
+        return "debt";
+      default:
+        return "";
+    }
+  };
+
+  const getMontoDisplay = (person) => {
+    if (person.estado === "Inactivo") {
+      return 0;
+    }
+    if (person.saldoFavor > 0) {
+      return person.saldoFavor;
+    }
+    return person.debt || 0;
   };
 
   const filteredPersons = allPersons.filter((person) => {
@@ -110,8 +161,8 @@ const AccountStatus = () => {
     <div className="accountStatus">
       <h2>Estado de Cuenta</h2>
       <p>
-        Visualiza quién está al día, quién debe o está inactivo (Clientes,
-        Pacientes y Quiropraxia)
+        Visualiza quién está al día, quién debe, tiene saldo a favor o está
+        inactivo (Clientes, Pacientes y Quiropraxia)
       </p>
 
       <div
@@ -162,7 +213,7 @@ const AccountStatus = () => {
                 <strong>Último Pago</strong>
               </TableCell>
               <TableCell>
-                <strong>Deuda</strong>
+                <strong>Deuda/Saldo</strong>
               </TableCell>
               <TableCell>
                 <strong>Acciones</strong>
@@ -183,27 +234,30 @@ const AccountStatus = () => {
                   {person.name} {person.lastName}
                 </TableCell>
                 <TableCell>
-                  <span
-                    className={`status ${
-                      person.estado === "Al día"
-                        ? "ok"
-                        : person.estado === "Inactivo"
-                        ? "inactive"
-                        : "debt"
-                    }`}
-                  >
-                    {person.estado}
+                  <span className={`status ${getEstadoClass(person)}`}>
+                    {getEstadoDisplay(person)}
                   </span>
                 </TableCell>
                 <TableCell>{person.ultimoPago || "Sin pagos"}</TableCell>
                 <TableCell>
-                  $
-                  {person.estado === "Inactivo"
-                    ? 0
-                    : (person.debt || 0).toLocaleString("es-AR")}
+                  <span
+                    style={{
+                      color:
+                        person.saldoFavor > 0
+                          ? "#4caf50"
+                          : person.debt > 0
+                          ? "#f44336"
+                          : "#666",
+                    }}
+                  >
+                    {person.saldoFavor > 0 ? "+" : ""}$
+                    {getMontoDisplay(person).toLocaleString("es-AR")}
+                  </span>
                 </TableCell>
                 <TableCell>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <div
+                    style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}
+                  >
                     <Button
                       variant="outlined"
                       onClick={() => toggleInactivo(person)}
@@ -219,6 +273,15 @@ const AccountStatus = () => {
                         onClick={() => eliminarDeuda(person)}
                       >
                         Eliminar Deuda
+                      </Button>
+                    )}
+                    {person.saldoFavor > 0 && (
+                      <Button
+                        variant="contained"
+                        color="info"
+                        onClick={() => eliminarSaldoFavor(person)}
+                      >
+                        Eliminar Saldo
                       </Button>
                     )}
                   </div>

@@ -509,6 +509,8 @@ import {
   Table,
   TableHead,
   Paper,
+  Alert,
+  Typography,
 } from "@mui/material";
 import "./PaymentsHistory.css";
 import { Timestamp } from "firebase/firestore";
@@ -519,6 +521,8 @@ export const PaymentsHistory = () => {
   const [openModal, setOpenModal] = useState(false);
   const [filtroMetodo, setFiltroMetodo] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("");
+  const [personaActual, setPersonaActual] = useState(null);
+  const [avisoSaldo, setAvisoSaldo] = useState("");
 
   const [nuevoPago, setNuevoPago] = useState({
     nombre: "",
@@ -606,20 +610,85 @@ export const PaymentsHistory = () => {
 
         if (!snap.empty) {
           const persona = snap.docs[0].data();
+          setPersonaActual(persona);
           setNuevoPago((prev) => ({
             ...prev,
             nombre: persona.name,
           }));
+
+          // Generar avisos según el estado de la persona
+          let aviso = "";
+          if (persona.saldoFavor > 0) {
+            aviso = `⚠️ Esta persona tiene un saldo a favor de $${persona.saldoFavor.toLocaleString(
+              "es-AR"
+            )}`;
+          } else if (persona.debt > 0) {
+            aviso = `💰 Deuda actual: $${persona.debt.toLocaleString("es-AR")}`;
+          } else {
+            aviso = "✅ La persona está al día";
+          }
+          setAvisoSaldo(aviso);
         } else {
+          setPersonaActual(null);
+          setAvisoSaldo("");
           setNuevoPago((prev) => ({
             ...prev,
             nombre: "",
           }));
         }
+      } else {
+        setPersonaActual(null);
+        setAvisoSaldo("");
       }
     };
     buscarPersona();
   }, [nuevoPago.dni, nuevoPago.tipo]);
+
+  // Generar aviso dinámico según el monto ingresado
+  useEffect(() => {
+    if (personaActual && nuevoPago.monto) {
+      const monto = parseInt(nuevoPago.monto);
+      if (isNaN(monto) || monto <= 0) return;
+
+      let avisoDetallado = "";
+
+      if (personaActual.saldoFavor > 0) {
+        const nuevoSaldoFavor = personaActual.saldoFavor + monto;
+        avisoDetallado = `💚 Saldo a favor actual: $${personaActual.saldoFavor.toLocaleString(
+          "es-AR"
+        )} → Nuevo saldo: $${nuevoSaldoFavor.toLocaleString("es-AR")}`;
+      } else if (personaActual.debt > 0) {
+        const deudaActual = personaActual.debt;
+        if (monto > deudaActual) {
+          const saldoFavor = monto - deudaActual;
+          avisoDetallado = `🎉 El pago de $${monto.toLocaleString(
+            "es-AR"
+          )} cubre la deuda de $${deudaActual.toLocaleString(
+            "es-AR"
+          )} y genera un saldo a favor de $${saldoFavor.toLocaleString(
+            "es-AR"
+          )}`;
+        } else if (monto === deudaActual) {
+          avisoDetallado = `✅ El pago de $${monto.toLocaleString(
+            "es-AR"
+          )} cubre exactamente la deuda. La persona quedará al día.`;
+        } else {
+          const deudaRestante = deudaActual - monto;
+          avisoDetallado = `⚠️ Pago parcial: $${monto.toLocaleString(
+            "es-AR"
+          )} de $${deudaActual.toLocaleString(
+            "es-AR"
+          )}. Deuda restante: $${deudaRestante.toLocaleString("es-AR")}`;
+        }
+      } else {
+        avisoDetallado = `💚 La persona está al día. Este pago de $${monto.toLocaleString(
+          "es-AR"
+        )} generará un saldo a favor.`;
+      }
+
+      setAvisoSaldo(avisoDetallado);
+    }
+  }, [nuevoPago.monto, personaActual]);
 
   const pagosFiltrados = pagos.filter((p) => {
     const coincideTexto =
@@ -636,6 +705,11 @@ export const PaymentsHistory = () => {
   });
 
   const handleRegistrarPago = async () => {
+    if (!personaActual) {
+      alert("⚠️ No se encontró la persona con ese DNI.");
+      return;
+    }
+
     const montoPagado = parseInt(nuevoPago.monto);
 
     // Obtener el mes en formato YYYY-MM desde la fecha ingresada
@@ -651,6 +725,38 @@ export const PaymentsHistory = () => {
       mes: mesPago,
       createdAt: Timestamp.fromDate(fechaPago),
     };
+
+    // Calcular nuevo estado y montos
+    const deudaActual = personaActual.debt || 0;
+    const saldoFavorActual = personaActual.saldoFavor || 0;
+
+    let nuevaDeuda = 0;
+    let nuevoSaldoFavor = 0;
+    let nuevoEstado = "Al día";
+
+    if (saldoFavorActual > 0) {
+      // Si ya tiene saldo a favor, se suma al saldo
+      nuevoSaldoFavor = saldoFavorActual + montoPagado;
+      nuevoEstado = "Al día"; // Técnicamente tiene saldo a favor, pero se maneja en el frontend
+    } else if (deudaActual > 0) {
+      // Si tiene deuda
+      if (montoPagado >= deudaActual) {
+        // Pago cubre o supera la deuda
+        nuevoSaldoFavor = montoPagado - deudaActual;
+        nuevaDeuda = 0;
+        nuevoEstado = "Al día";
+      } else {
+        // Pago parcial
+        nuevaDeuda = deudaActual - montoPagado;
+        nuevoSaldoFavor = 0;
+        nuevoEstado = "Deudor";
+      }
+    } else {
+      // Si está al día, genera saldo a favor
+      nuevoSaldoFavor = montoPagado;
+      nuevaDeuda = 0;
+      nuevoEstado = "Al día";
+    }
 
     // Determinar colección y estructura según el tipo
     if (nuevoPago.tipo === "cliente") {
@@ -670,15 +776,11 @@ export const PaymentsHistory = () => {
       if (!snap.empty) {
         const clienteDoc = snap.docs[0];
         const clienteRef = doc(db, "clients", clienteDoc.id);
-        const clienteData = clienteDoc.data();
-
-        const deudaActual = clienteData.debt || 30000;
-        const nuevaDeuda = Math.max(0, deudaActual - montoPagado);
-        const nuevoEstado = nuevaDeuda === 0 ? "Al día" : "Deudor";
 
         await updateDoc(clienteRef, {
           ultimoPago: nuevoPago.fecha,
           debt: nuevaDeuda,
+          saldoFavor: nuevoSaldoFavor,
           estado: nuevoEstado,
         });
       }
@@ -699,15 +801,11 @@ export const PaymentsHistory = () => {
       if (!snap.empty) {
         const pacienteDoc = snap.docs[0];
         const pacienteRef = doc(db, "patients", pacienteDoc.id);
-        const pacienteData = pacienteDoc.data();
-
-        const deudaActual = pacienteData.debt || 30000;
-        const nuevaDeuda = Math.max(0, deudaActual - montoPagado);
-        const nuevoEstado = nuevaDeuda === 0 ? "Al día" : "Deudor";
 
         await updateDoc(pacienteRef, {
           ultimoPago: nuevoPago.fecha,
           debt: nuevaDeuda,
+          saldoFavor: nuevoSaldoFavor,
           estado: nuevoEstado,
         });
       }
@@ -728,21 +826,14 @@ export const PaymentsHistory = () => {
       if (!snap.empty) {
         const quiroDoc = snap.docs[0];
         const quiroRef = doc(db, "quiropraxia", quiroDoc.id);
-        const quiroData = quiroDoc.data();
-
-        const deudaActual = quiroData.debt || 0;
-        const nuevaDeuda = Math.max(0, deudaActual - montoPagado);
-        const nuevoEstado = nuevaDeuda === 0 ? "Al día" : "Deudor";
 
         await updateDoc(quiroRef, {
           ultimoPago: nuevoPago.fecha,
           debt: nuevaDeuda,
+          saldoFavor: nuevoSaldoFavor,
           estado: nuevoEstado,
         });
       }
-    } else {
-      alert("⚠ No se encontró la persona con ese DNI.");
-      return;
     }
 
     setNuevoPago({
@@ -754,6 +845,8 @@ export const PaymentsHistory = () => {
       fecha: new Date().toLocaleDateString("es-AR"),
       tipo: "",
     });
+    setPersonaActual(null);
+    setAvisoSaldo("");
     setOpenModal(false);
     cargarPagos();
   };
@@ -776,10 +869,29 @@ export const PaymentsHistory = () => {
         const clienteRef = doc(db, "clients", clienteDoc.id);
         const clienteData = clienteDoc.data();
 
-        const nuevaDeuda = (clienteData.debt || 0) + (pago.monto || 0);
+        // Lógica inversa: restar el pago eliminado
+        const saldoFavorActual = clienteData.saldoFavor || 0;
+        const deudaActual = clienteData.debt || 0;
+
+        let nuevaDeuda = deudaActual;
+        let nuevoSaldoFavor = saldoFavorActual;
+
+        if (saldoFavorActual >= pago.monto) {
+          // Si el saldo a favor cubre el monto eliminado
+          nuevoSaldoFavor = saldoFavorActual - pago.monto;
+        } else {
+          // El pago eliminado genera deuda
+          const montoDeuda = pago.monto - saldoFavorActual;
+          nuevaDeuda = deudaActual + montoDeuda;
+          nuevoSaldoFavor = 0;
+        }
+
+        const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
+
         await updateDoc(clienteRef, {
           debt: nuevaDeuda,
-          estado: nuevaDeuda === 0 ? "Al día" : "Deudor",
+          saldoFavor: nuevoSaldoFavor,
+          estado: nuevoEstado,
         });
       }
     } else if (pago.tipoPersona === "Paciente") {
@@ -794,10 +906,26 @@ export const PaymentsHistory = () => {
         const pacienteRef = doc(db, "patients", pacienteDoc.id);
         const pacienteData = pacienteDoc.data();
 
-        const nuevaDeuda = (pacienteData.debt || 0) + (pago.monto || 0);
+        const saldoFavorActual = pacienteData.saldoFavor || 0;
+        const deudaActual = pacienteData.debt || 0;
+
+        let nuevaDeuda = deudaActual;
+        let nuevoSaldoFavor = saldoFavorActual;
+
+        if (saldoFavorActual >= pago.monto) {
+          nuevoSaldoFavor = saldoFavorActual - pago.monto;
+        } else {
+          const montoDeuda = pago.monto - saldoFavorActual;
+          nuevaDeuda = deudaActual + montoDeuda;
+          nuevoSaldoFavor = 0;
+        }
+
+        const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
+
         await updateDoc(pacienteRef, {
           debt: nuevaDeuda,
-          estado: nuevaDeuda === 0 ? "Al día" : "Deudor",
+          saldoFavor: nuevoSaldoFavor,
+          estado: nuevoEstado,
         });
       }
     } else if (pago.tipoPersona === "Quiropraxia") {
@@ -812,10 +940,26 @@ export const PaymentsHistory = () => {
         const quiroRef = doc(db, "quiropraxia", quiroDoc.id);
         const quiroData = quiroDoc.data();
 
-        const nuevaDeuda = (quiroData.debt || 0) + (pago.monto || 0);
+        const saldoFavorActual = quiroData.saldoFavor || 0;
+        const deudaActual = quiroData.debt || 0;
+
+        let nuevaDeuda = deudaActual;
+        let nuevoSaldoFavor = saldoFavorActual;
+
+        if (saldoFavorActual >= pago.monto) {
+          nuevoSaldoFavor = saldoFavorActual - pago.monto;
+        } else {
+          const montoDeuda = pago.monto - saldoFavorActual;
+          nuevaDeuda = deudaActual + montoDeuda;
+          nuevoSaldoFavor = 0;
+        }
+
+        const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
+
         await updateDoc(quiroRef, {
           debt: nuevaDeuda,
-          estado: nuevaDeuda === 0 ? "Al día" : "Deudor",
+          saldoFavor: nuevoSaldoFavor,
+          estado: nuevoEstado,
         });
       }
     }
@@ -886,7 +1030,6 @@ export const PaymentsHistory = () => {
               <TableCell>
                 <strong>Nombre</strong>
               </TableCell>
-              {/* <TableCell><strong>Concepto</strong></TableCell> */}
               <TableCell>
                 <strong>Método</strong>
               </TableCell>
@@ -908,7 +1051,6 @@ export const PaymentsHistory = () => {
                   </span>
                 </TableCell>
                 <TableCell>{pago.personaInfo.name}</TableCell>
-                {/* <TableCell>{pago.concepto}</TableCell> */}
                 <TableCell>{renderMetodo(pago.metodo)}</TableCell>
                 <TableCell>${pago.monto.toLocaleString()}</TableCell>
                 <TableCell>
@@ -933,14 +1075,17 @@ export const PaymentsHistory = () => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 400,
+            width: 450,
             bgcolor: "white",
             borderRadius: 2,
             boxShadow: 24,
             p: 4,
+            maxHeight: "90vh",
+            overflowY: "auto",
           }}
         >
           <h3>Registrar Nuevo Pago</h3>
+
           <TextField
             label="Tipo de persona"
             select
@@ -955,6 +1100,7 @@ export const PaymentsHistory = () => {
             <MenuItem value="paciente">🏥 Kinesio</MenuItem>
             <MenuItem value="quiropraxia">🦴 Quiropraxia</MenuItem>
           </TextField>
+
           <TextField
             label="DNI"
             fullWidth
@@ -974,6 +1120,7 @@ export const PaymentsHistory = () => {
               }`
             }
           />
+
           <TextField
             label="Nombre"
             fullWidth
@@ -983,6 +1130,25 @@ export const PaymentsHistory = () => {
               setNuevoPago({ ...nuevoPago, nombre: e.target.value })
             }
           />
+
+          {/* Mostrar aviso del estado actual de la persona */}
+          {avisoSaldo && (
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <Alert
+                severity={
+                  avisoSaldo.includes("saldo a favor") ||
+                  avisoSaldo.includes("cubre exactamente")
+                    ? "success"
+                    : avisoSaldo.includes("parcial")
+                    ? "warning"
+                    : "info"
+                }
+                sx={{ fontSize: "0.85rem" }}
+              >
+                <Typography variant="body2">{avisoSaldo}</Typography>
+              </Alert>
+            </Box>
+          )}
 
           <TextField
             label="Método de pago"
@@ -994,10 +1160,11 @@ export const PaymentsHistory = () => {
               setNuevoPago({ ...nuevoPago, metodo: e.target.value })
             }
           >
-            <MenuItem value="efectivo">Efectivo</MenuItem>
-            <MenuItem value="transferencia">Transferencia</MenuItem>
-            <MenuItem value="tarjeta">Tarjeta</MenuItem>
+            <MenuItem value="efectivo">💵 Efectivo</MenuItem>
+            <MenuItem value="transferencia">✔ Transferencia</MenuItem>
+            <MenuItem value="tarjeta">💳 Tarjeta</MenuItem>
           </TextField>
+
           <TextField
             label="Monto"
             type="number"
@@ -1017,7 +1184,7 @@ export const PaymentsHistory = () => {
             onClick={handleRegistrarPago}
             disabled={!nuevoPago.dni || !nuevoPago.monto || !nuevoPago.tipo}
           >
-            Registrar
+            Registrar Pago
           </Button>
         </Box>
       </Modal>

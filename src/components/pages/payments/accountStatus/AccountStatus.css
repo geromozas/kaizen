@@ -1,4 +1,4 @@
-.accountStatus {
+/* .accountStatus {
   padding: 20px;
 }
 
@@ -60,7 +60,6 @@
   background-color: white;
 }
 
-/* Estilos para los tipos */
 .tipo.cliente {
   background-color: #e3f2fd;
   color: #1976d2;
@@ -92,4 +91,78 @@
 
 .accountTable tbody tr:hover {
   background-color: #f8f9fa;
+} */
+/* Estilos para los estados */
+.status.ok {
+  background-color: #e8f5e8;
+  color: #2e7d2e;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.status.debt {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.status.inactive {
+  background-color: #f5f5f5;
+  color: #757575;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.status.favor {
+  background-color: #e8f5e8;
+  color: #1b5e20;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+/* Estilos para los tipos */
+.tipo.Cliente {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.tipo.Paciente {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.tipo.Quiropraxia {
+  background-color: #fff3e0;
+  color: #ef6c00;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.accountStatus h2 {
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.accountStatus p {
+  margin-bottom: 20px;
+  color: #666;
 }
