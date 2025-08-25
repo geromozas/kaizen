@@ -35,6 +35,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
+import Swal from "sweetalert2";
 
 const availableHours = [
   "07:00",
@@ -160,23 +161,37 @@ const NewScheduleModal = ({
 
     return dates;
   };
-
   const handleSave = async () => {
     if (selectedClients.length === 0) {
-      alert("Por favor selecciona al menos un cliente");
+      Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "Por favor selecciona al menos un cliente",
+        confirmButtonColor: "#3085d6",
+      });
       return;
     }
 
     if (editData) {
       // Validación para modo edición
       if (selectedHours.length === 0) {
-        alert("Por favor selecciona al menos un horario");
+        Swal.fire({
+          icon: "warning",
+          title: "Atención",
+          text: "Por favor selecciona al menos un horario",
+          confirmButtonColor: "#3085d6",
+        });
         return;
       }
     } else {
       // Validación para modo creación
       if (selectedDays.length === 0) {
-        alert("Por favor selecciona al menos un día de la semana");
+        Swal.fire({
+          icon: "warning",
+          title: "Atención",
+          text: "Por favor selecciona al menos un día de la semana",
+          confirmButtonColor: "#3085d6",
+        });
         return;
       }
 
@@ -187,7 +202,12 @@ const NewScheduleModal = ({
       );
 
       if (!hasAllSchedules) {
-        alert("Por favor selecciona al menos un horario para cada día elegido");
+        Swal.fire({
+          icon: "warning",
+          title: "Atención",
+          text: "Por favor selecciona al menos un horario para cada día elegido",
+          confirmButtonColor: "#3085d6",
+        });
         return;
       }
     }
@@ -237,6 +257,15 @@ const NewScheduleModal = ({
           ...(editData.batchId && { batchId: editData.batchId }),
         };
         await setDoc(doc(db, "schedules", editData.id), data);
+
+        // Alerta de éxito para edición
+        Swal.fire({
+          icon: "success",
+          title: "¡Horario actualizado!",
+          text: "El horario se ha actualizado correctamente",
+          timer: 2000,
+          showConfirmButton: false,
+        });
       } else {
         // Modo creación - crear múltiples horarios
         if (replicateToYear) {
@@ -286,6 +315,15 @@ const NewScheduleModal = ({
             await addDoc(collection(db, "schedules"), data);
           }
         }
+
+        // Alerta de éxito para creación
+        Swal.fire({
+          icon: "success",
+          title: "¡Horarios creados!",
+          text: "Los horarios se han creado exitosamente",
+          timer: 2000,
+          showConfirmButton: false,
+        });
       }
 
       // Limpiar formulario y cerrar modal
@@ -300,9 +338,156 @@ const NewScheduleModal = ({
       refresh();
     } catch (error) {
       console.error("Error al guardar:", error);
-      alert("Error al guardar los horarios");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error al guardar los horarios",
+        confirmButtonColor: "#d33",
+      });
     }
   };
+  // const handleSave = async () => {
+  //   if (selectedClients.length === 0) {
+  //     alert("Por favor selecciona al menos un cliente");
+  //     return;
+  //   }
+
+  //   if (editData) {
+  //     // Validación para modo edición
+  //     if (selectedHours.length === 0) {
+  //       alert("Por favor selecciona al menos un horario");
+  //       return;
+  //     }
+  //   } else {
+  //     // Validación para modo creación
+  //     if (selectedDays.length === 0) {
+  //       alert("Por favor selecciona al menos un día de la semana");
+  //       return;
+  //     }
+
+  //     // Verificar que cada día seleccionado tenga al menos un horario
+  //     const hasAllSchedules = selectedDays.every(
+  //       (dayValue) =>
+  //         daySchedules[dayValue] && daySchedules[dayValue].length > 0
+  //     );
+
+  //     if (!hasAllSchedules) {
+  //       alert("Por favor selecciona al menos un horario para cada día elegido");
+  //       return;
+  //     }
+  //   }
+
+  //   // Preparar datos de clientes con información del tipo de actividad
+  //   const clientsData = selectedClients.map((id) => ({
+  //     id,
+  //     attended: false,
+  //     activityType: activityType, // Añadir tipo de actividad a cada cliente
+  //   }));
+
+  //   try {
+  //     if (editData) {
+  //       // Modo edición - actualizar solo el horario específico
+  //       // Preservar la información de asistencia existente
+  //       const existingClients = editData.clients || [];
+  //       const updatedClientsData = selectedClients.map((id) => {
+  //         // Buscar si el cliente ya existía en el horario
+  //         const existingClient = existingClients.find((c) => {
+  //           const existingId = typeof c === "string" ? c : c.id;
+  //           return existingId === id;
+  //         });
+
+  //         // Si ya existía, preservar su estado de asistencia
+  //         if (existingClient && typeof existingClient === "object") {
+  //           return {
+  //             id,
+  //             attended: existingClient.attended,
+  //             activityType: activityType,
+  //           };
+  //         }
+
+  //         // Si es nuevo, marcar como no asistido
+  //         return {
+  //           id,
+  //           attended: false,
+  //           activityType: activityType,
+  //         };
+  //       });
+
+  //       const data = {
+  //         date: selectedDate.toISOString().split("T")[0],
+  //         hour: selectedHours[0],
+  //         clients: updatedClientsData,
+  //         activityType: activityType, // Guardar tipo de actividad en el horario
+  //         // Mantener el batchId existente si existe
+  //         ...(editData.batchId && { batchId: editData.batchId }),
+  //       };
+  //       await setDoc(doc(db, "schedules", editData.id), data);
+  //     } else {
+  //       // Modo creación - crear múltiples horarios
+  //       if (replicateToYear) {
+  //         // Generar un ID único para este lote de horarios
+  //         const batchId = `batch_${Date.now()}_${Math.random()
+  //           .toString(36)
+  //           .substr(2, 9)}`;
+
+  //         // Generar fechas del año basadas en días seleccionados
+  //         const dates = generateYearlyDates(selectedDays, selectedDate);
+
+  //         // Usar batch para crear múltiples documentos
+  //         const batch = writeBatch(db);
+
+  //         dates.forEach((date) => {
+  //           const dayOfWeek = date.getDay();
+  //           const hoursForDay = daySchedules[dayOfWeek] || [];
+
+  //           hoursForDay.forEach((hour) => {
+  //             const scheduleRef = doc(collection(db, "schedules"));
+  //             const data = {
+  //               date: date.toISOString().split("T")[0],
+  //               hour: hour,
+  //               clients: clientsData,
+  //               activityType: activityType, // Guardar tipo de actividad
+  //               batchId: batchId,
+  //               createdAt: new Date().toISOString(),
+  //             };
+  //             batch.set(scheduleRef, data);
+  //           });
+  //         });
+
+  //         await batch.commit();
+  //       } else {
+  //         // Crear solo para la fecha seleccionada
+  //         const dayOfWeek = selectedDate.getDay();
+  //         const hoursForDay = daySchedules[dayOfWeek] || [];
+
+  //         for (const hour of hoursForDay) {
+  //           const data = {
+  //             date: selectedDate.toISOString().split("T")[0],
+  //             hour: hour,
+  //             clients: clientsData,
+  //             activityType: activityType, // Guardar tipo de actividad
+  //             createdAt: new Date().toISOString(),
+  //           };
+  //           await addDoc(collection(db, "schedules"), data);
+  //         }
+  //       }
+  //     }
+
+  //     // Limpiar formulario y cerrar modal
+  //     onClose();
+  //     setSelectedHours([]);
+  //     setSelectedDays([]);
+  //     setSelectedClients([]);
+  //     setDaySchedules({});
+  //     setSearchTerm("");
+  //     setReplicateToYear(true);
+  //     setActivityType("gimnasio");
+  //     refresh();
+  //   } catch (error) {
+  //     console.error("Error al guardar:", error);
+  //     alert("Error al guardar los horarios");
+  //   }
+  // };
 
   const handleHourChange = (event) => {
     const value = event.target.value;

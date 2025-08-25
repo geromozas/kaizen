@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 import NewScheduleModal from "../NewScheduleModal/NewScheduleModal";
+import Swal from "sweetalert2";
 
 const availableHours = [
   "07:00",
@@ -130,19 +131,91 @@ const Calendar = () => {
     });
   };
 
+  // const handleDelete = async (id) => {
+  //   const confirm = window.confirm("¿Estás seguro de eliminar este horario?");
+  //   if (!confirm) return;
+  //   await deleteDoc(doc(db, "schedules", id));
+  //   loadSchedules();
+  // };
   const handleDelete = async (id) => {
-    const confirm = window.confirm("¿Estás seguro de eliminar este horario?");
-    if (!confirm) return;
-    await deleteDoc(doc(db, "schedules", id));
-    loadSchedules();
-  };
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "¿Estás seguro?",
+      text: "¿Estás seguro de eliminar este horario?",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
 
+    if (!result.isConfirmed) return;
+
+    try {
+      await deleteDoc(doc(db, "schedules", id));
+
+      Swal.fire({
+        icon: "success",
+        title: "¡Eliminado!",
+        text: "El horario se ha eliminado exitosamente.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      loadSchedules();
+    } catch (error) {
+      console.error("Error al eliminar horario:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error al eliminar el horario",
+        confirmButtonColor: "#d33",
+      });
+    }
+  };
+  // const handleDeleteBatch = async (batchId) => {
+  //   const schedulesInBatch = schedules.filter((s) => s.batchId === batchId);
+
+  //   const confirmMessage = `¿Estás seguro de eliminar toda la serie de horarios?\n\nSe eliminarán ${schedulesInBatch.length} horarios creados en conjunto.`;
+
+  //   if (!window.confirm(confirmMessage)) return;
+
+  //   try {
+  //     // Usar batch para eliminar múltiples documentos de manera eficiente
+  //     const batch = writeBatch(db);
+
+  //     schedulesInBatch.forEach((schedule) => {
+  //       const scheduleRef = doc(db, "schedules", schedule.id);
+  //       batch.delete(scheduleRef);
+  //     });
+
+  //     await batch.commit();
+
+  //     alert(`Se eliminaron ${schedulesInBatch.length} horarios exitosamente.`);
+  //     loadSchedules();
+  //   } catch (error) {
+  //     console.error("Error al eliminar la serie de horarios:", error);
+  //     alert("Error al eliminar la serie de horarios");
+  //   }
+  // };
   const handleDeleteBatch = async (batchId) => {
     const schedulesInBatch = schedules.filter((s) => s.batchId === batchId);
 
-    const confirmMessage = `¿Estás seguro de eliminar toda la serie de horarios?\n\nSe eliminarán ${schedulesInBatch.length} horarios creados en conjunto.`;
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "¿Estás seguro?",
+      html: `
+      <p>¿Estás seguro de eliminar toda la serie de horarios?</p>
+      <p><strong>Se eliminarán ${schedulesInBatch.length} horarios creados en conjunto.</strong></p>
+    `,
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
 
-    if (!window.confirm(confirmMessage)) return;
+    if (!result.isConfirmed) return;
 
     try {
       // Usar batch para eliminar múltiples documentos de manera eficiente
@@ -155,11 +228,23 @@ const Calendar = () => {
 
       await batch.commit();
 
-      alert(`Se eliminaron ${schedulesInBatch.length} horarios exitosamente.`);
+      Swal.fire({
+        icon: "success",
+        title: "¡Eliminados!",
+        text: `Se eliminaron ${schedulesInBatch.length} horarios exitosamente.`,
+        timer: 2500,
+        showConfirmButton: false,
+      });
+
       loadSchedules();
     } catch (error) {
       console.error("Error al eliminar la serie de horarios:", error);
-      alert("Error al eliminar la serie de horarios");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error al eliminar la serie de horarios",
+        confirmButtonColor: "#d33",
+      });
     }
   };
 
