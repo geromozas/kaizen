@@ -17,6 +17,7 @@ import {
   Paper,
   TextField,
 } from "@mui/material";
+import Swal from "sweetalert2";
 
 const AccountStatus = () => {
   const [allPersons, setAllPersons] = useState([]);
@@ -59,13 +60,42 @@ const AccountStatus = () => {
     fetchData();
   }, []);
 
+  // const toggleInactivo = async (person) => {
+  //   let nuevoEstado;
+  //   let nuevaDeuda = person.debt || 0;
+  //   let nuevoSaldoFavor = person.saldoFavor || 0;
+
+  //   if (person.estado === "Inactivo") {
+  //     // Reactivar: vuelve al estado anterior según deuda/saldo
+  //     if (nuevoSaldoFavor > 0) {
+  //       nuevoEstado = "Saldo a favor";
+  //     } else if (nuevaDeuda > 0) {
+  //       nuevoEstado = "Deudor";
+  //     } else {
+  //       nuevoEstado = "Al día";
+  //     }
+  //   } else {
+  //     // Poner inactivo: deuda en 0, saldo a favor en 0
+  //     nuevoEstado = "Inactivo";
+  //     nuevaDeuda = 0;
+  //     nuevoSaldoFavor = 0;
+  //   }
+
+  //   await updateDoc(doc(db, person.collection, person.id), {
+  //     estado: nuevoEstado,
+  //     debt: nuevaDeuda,
+  //     saldoFavor: nuevoSaldoFavor,
+  //   });
+
+  //   fetchData();
+  // };
   const toggleInactivo = async (person) => {
     let nuevoEstado;
     let nuevaDeuda = person.debt || 0;
     let nuevoSaldoFavor = person.saldoFavor || 0;
 
     if (person.estado === "Inactivo") {
-      // Reactivar: vuelve al estado anterior según deuda/saldo
+      // Reactivar
       if (nuevoSaldoFavor > 0) {
         nuevoEstado = "Saldo a favor";
       } else if (nuevaDeuda > 0) {
@@ -74,7 +104,7 @@ const AccountStatus = () => {
         nuevoEstado = "Al día";
       }
     } else {
-      // Poner inactivo: deuda en 0, saldo a favor en 0
+      // Marcar inactivo
       nuevoEstado = "Inactivo";
       nuevaDeuda = 0;
       nuevoSaldoFavor = 0;
@@ -87,24 +117,93 @@ const AccountStatus = () => {
     });
 
     fetchData();
+
+    Swal.fire({
+      icon: "success",
+      title: "Estado actualizado",
+      text:
+        nuevoEstado === "Inactivo"
+          ? `${person.name} ${person.lastName} fue marcado como inactivo`
+          : `${person.name} ${person.lastName} fue activado correctamente`,
+      timer: 2000,
+      showConfirmButton: false,
+    });
   };
 
+  // const eliminarDeuda = async (person) => {
+  //   await updateDoc(doc(db, person.collection, person.id), {
+  //     estado: "Al día",
+  //     debt: 0,
+  //   });
+
+  //   fetchData();
+  // };
   const eliminarDeuda = async (person) => {
-    await updateDoc(doc(db, person.collection, person.id), {
-      estado: "Al día",
-      debt: 0,
+    const result = await Swal.fire({
+      title: "¿Eliminar deuda?",
+      text: `¿Seguro que deseas eliminar la deuda de ${person.name} ${person.lastName}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
     });
 
-    fetchData();
+    if (result.isConfirmed) {
+      await updateDoc(doc(db, person.collection, person.id), {
+        estado: "Al día",
+        debt: 0,
+      });
+
+      fetchData();
+
+      Swal.fire({
+        icon: "success",
+        title: "Deuda eliminada",
+        text: `${person.name} ${person.lastName} ahora está al día`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
   };
 
+  // const eliminarSaldoFavor = async (person) => {
+  //   await updateDoc(doc(db, person.collection, person.id), {
+  //     estado: "Al día",
+  //     saldoFavor: 0,
+  //   });
+
+  //   fetchData();
+  // };
   const eliminarSaldoFavor = async (person) => {
-    await updateDoc(doc(db, person.collection, person.id), {
-      estado: "Al día",
-      saldoFavor: 0,
+    const result = await Swal.fire({
+      title: "¿Eliminar saldo a favor?",
+      text: `¿Seguro que deseas eliminar el saldo a favor de ${person.name} ${person.lastName}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
     });
 
-    fetchData();
+    if (result.isConfirmed) {
+      await updateDoc(doc(db, person.collection, person.id), {
+        estado: "Al día",
+        saldoFavor: 0,
+      });
+
+      fetchData();
+
+      Swal.fire({
+        icon: "success",
+        title: "Saldo eliminado",
+        text: `${person.name} ${person.lastName} ahora está al día`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
   };
 
   const getEstadoDisplay = (person) => {
