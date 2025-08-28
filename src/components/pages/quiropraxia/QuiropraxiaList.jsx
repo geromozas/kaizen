@@ -13,20 +13,34 @@ import {
   Select,
   Typography,
   Chip,
+  Box,
+  Modal,
+  FormControl,
+  InputLabel,
+  Alert,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import PaymentIcon from "@mui/icons-material/Payment";
 
-import { deleteDoc, doc, collection, getDocs } from "firebase/firestore";
-import Box from "@mui/material/Box";
-import Modal from "@mui/material/Modal";
-import { useState } from "react";
+import {
+  deleteDoc,
+  doc,
+  collection,
+  getDocs,
+  query,
+  where,
+  addDoc,
+  updateDoc,
+} from "firebase/firestore";
+import { useState, useEffect } from "react";
 import { useActivities } from "../activities/useActivities";
 import { db } from "../../../firebaseConfig";
 import { QuiropraxiaForm } from "./QuiropraxiaForm";
 import { ActivityPricesManager } from "../activities/ActivityPricesManager";
+import { Timestamp } from "firebase/firestore";
 import Swal from "sweetalert2";
 
 const style = {
@@ -56,11 +70,21 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
   const [openForm, setOpenForm] = useState(false);
   const [openProfile, setOpenProfile] = useState(false);
   const [openPricesManager, setOpenPricesManager] = useState(false);
+  const [openPaymentModal, setOpenPaymentModal] = useState(false);
   const [patientSelected, setPatientSelected] = useState(null);
   const [actividadFilter, setActividadFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [patientSchedules, setPatientSchedules] = useState([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [avisoSaldo, setAvisoSaldo] = useState("");
+
+  // Estado para el formulario de pago
+  const [nuevoPago, setNuevoPago] = useState({
+    concepto: "",
+    metodo: "",
+    monto: "",
+    fecha: new Date().toLocaleDateString("es-AR"),
+  });
 
   const { activities = [], reloadActivities } = useActivities();
 
@@ -70,10 +94,39 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
     setPatientSchedules([]);
   };
   const handleClosePricesManager = () => setOpenPricesManager(false);
+  const handleClosePaymentModal = () => {
+    setOpenPaymentModal(false);
+    setPatientSelected(null);
+    setNuevoPago({
+      concepto: "",
+      metodo: "",
+      monto: "",
+      fecha: new Date().toLocaleDateString("es-AR"),
+    });
+    setAvisoSaldo("");
+  };
 
   const handleOpenForm = (patient) => {
     setPatientSelected(patient);
     setOpenForm(true);
+  };
+
+  const handleOpenPaymentModal = (patient) => {
+    setPatientSelected(patient);
+
+    // Generar aviso según el estado actual del paciente
+    let aviso = "";
+    if (patient.saldoFavor > 0) {
+      aviso = `⚠️ Esta persona tiene un saldo a favor de $${patient.saldoFavor.toLocaleString(
+        "es-AR"
+      )}`;
+    } else if (patient.debt > 0) {
+      aviso = `💰 Deuda actual: $${patient.debt.toLocaleString("es-AR")}`;
+    } else {
+      aviso = "✅ La persona está al día";
+    }
+    setAvisoSaldo(aviso);
+    setOpenPaymentModal(true);
   };
 
   const handleOpenProfile = async (patient) => {
@@ -128,6 +181,158 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
   const handleActivityUpdate = () => {
     reloadActivities();
     setIsChange(true); // Para refrescar la lista de pacientes también
+  };
+
+  // Generar aviso dinámico según el monto ingresado
+  useEffect(() => {
+    if (patientSelected && nuevoPago.monto) {
+      const monto = parseInt(nuevoPago.monto);
+      if (isNaN(monto) || monto <= 0) return;
+
+      let avisoDetallado = "";
+      const saldoFavorActual = patientSelected.saldoFavor || 0;
+      const deudaActual = patientSelected.debt || 0;
+
+      if (saldoFavorActual > 0) {
+        const nuevoSaldoFavor = saldoFavorActual + monto;
+        avisoDetallado = `💚 Saldo a favor actual: $${saldoFavorActual.toLocaleString(
+          "es-AR"
+        )} → Nuevo saldo: $${nuevoSaldoFavor.toLocaleString("es-AR")}`;
+      } else if (deudaActual > 0) {
+        if (monto > deudaActual) {
+          const saldoFavor = monto - deudaActual;
+          avisoDetallado = `🎉 El pago de $${monto.toLocaleString(
+            "es-AR"
+          )} cubre la deuda de $${deudaActual.toLocaleString(
+            "es-AR"
+          )} y genera un saldo a favor de $${saldoFavor.toLocaleString(
+            "es-AR"
+          )}`;
+        } else if (monto === deudaActual) {
+          avisoDetallado = `✅ El pago de $${monto.toLocaleString(
+            "es-AR"
+          )} cubre exactamente la deuda. La persona quedará al día.`;
+        } else {
+          const deudaRestante = deudaActual - monto;
+          avisoDetallado = `⚠️ Pago parcial: $${monto.toLocaleString(
+            "es-AR"
+          )} de $${deudaActual.toLocaleString(
+            "es-AR"
+          )}. Deuda restante: $${deudaRestante.toLocaleString("es-AR")}`;
+        }
+      } else {
+        avisoDetallado = `💚 La persona está al día. Este pago de $${monto.toLocaleString(
+          "es-AR"
+        )} generará un saldo a favor.`;
+      }
+
+      setAvisoSaldo(avisoDetallado);
+    }
+  }, [nuevoPago.monto, patientSelected]);
+
+  const handleRegistrarPago = async () => {
+    if (!patientSelected || !nuevoPago.monto || !nuevoPago.metodo) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "⚠️ Complete todos los campos obligatorios.",
+      });
+      return;
+    }
+
+    const montoPagado = parseInt(nuevoPago.monto);
+
+    // Obtener el mes en formato YYYY-MM desde la fecha ingresada
+    const [dia, mes, anio] = nuevoPago.fecha.split("/").map(Number);
+    const mesPago = `${anio}-${String(mes).padStart(2, "0")}`;
+    const fechaPago = new Date(anio, mes - 1, dia);
+
+    const pagoFinal = {
+      fecha: nuevoPago.fecha,
+      concepto: nuevoPago.concepto || "Pago de sesión",
+      metodo: nuevoPago.metodo,
+      monto: montoPagado,
+      mes: mesPago,
+      createdAt: Timestamp.fromDate(fechaPago),
+      pacienteQuiro: {
+        name: patientSelected.name,
+        dni: patientSelected.dni,
+      },
+    };
+
+    // Calcular nuevo estado y montos
+    const deudaActual = patientSelected.debt || 0;
+    const saldoFavorActual = patientSelected.saldoFavor || 0;
+
+    let nuevaDeuda = 0;
+    let nuevoSaldoFavor = 0;
+    let nuevoEstado = "Al día";
+
+    if (saldoFavorActual > 0) {
+      // Si ya tiene saldo a favor, se suma al saldo
+      nuevoSaldoFavor = saldoFavorActual + montoPagado;
+      nuevoEstado = "Al día";
+    } else if (deudaActual > 0) {
+      // Si tiene deuda
+      if (montoPagado >= deudaActual) {
+        // Pago cubre o supera la deuda
+        nuevoSaldoFavor = montoPagado - deudaActual;
+        nuevaDeuda = 0;
+        nuevoEstado = "Al día";
+      } else {
+        // Pago parcial
+        nuevaDeuda = deudaActual - montoPagado;
+        nuevoSaldoFavor = 0;
+        nuevoEstado = "Deudor";
+      }
+    } else {
+      // Si está al día, genera saldo a favor
+      nuevoSaldoFavor = montoPagado;
+      nuevaDeuda = 0;
+      nuevoEstado = "Al día";
+    }
+
+    try {
+      // Registrar el pago en quiropraxiaPayments
+      await addDoc(collection(db, "quiropraxiaPayments"), pagoFinal);
+
+      // Actualizar el paciente de quiropraxia
+      const q = query(
+        collection(db, "quiropraxia"),
+        where("dni", "==", patientSelected.dni)
+      );
+      const snap = await getDocs(q);
+
+      if (!snap.empty) {
+        const quiroDoc = snap.docs[0];
+        const quiroRef = doc(db, "quiropraxia", quiroDoc.id);
+
+        await updateDoc(quiroRef, {
+          ultimoPago: nuevoPago.fecha,
+          debt: nuevaDeuda,
+          saldoFavor: nuevoSaldoFavor,
+          estado: nuevoEstado,
+        });
+      }
+
+      handleClosePaymentModal();
+      setIsChange(true); // Recargar la lista de pacientes
+
+      Swal.fire({
+        icon: "success",
+        title: "Pago registrado",
+        text: "El pago fue registrado exitosamente ✅",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error al registrar pago:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Hubo un error al registrar el pago",
+      });
+    }
   };
 
   const deletePatient = (id) => {
@@ -190,6 +395,19 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
       day: item.day,
       hours: Array.from(item.hours).sort(),
     }));
+  };
+
+  const renderMetodo = (metodo) => {
+    switch (metodo?.toLowerCase()) {
+      case "efectivo":
+        return "💵 Efectivo";
+      case "transferencia":
+        return "✔ Transferencia";
+      case "tarjeta":
+        return "💳 Tarjeta";
+      default:
+        return metodo;
+    }
   };
 
   // Verificación de seguridad para evitar el error de filter
@@ -320,6 +538,13 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
                     : (patient.debt || 0).toLocaleString()}
                 </TableCell>
                 <TableCell>
+                  <IconButton
+                    onClick={() => handleOpenPaymentModal(patient)}
+                    color="primary"
+                    title="Registrar pago"
+                  >
+                    <PaymentIcon />
+                  </IconButton>
                   <IconButton onClick={() => handleOpenForm(patient)}>
                     <EditIcon />
                   </IconButton>
@@ -350,6 +575,121 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
             patientSelected={patientSelected}
             setPatientSelected={setPatientSelected}
           />
+        </Box>
+      </Modal>
+
+      {/* Modal de registro de pago */}
+      <Modal open={openPaymentModal} onClose={handleClosePaymentModal}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 450,
+            bgcolor: "white",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 4,
+            maxHeight: "90vh",
+            overflowY: "auto",
+          }}
+        >
+          <h3>Registrar Pago</h3>
+          {patientSelected && (
+            <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
+              Paciente: {patientSelected.name} {patientSelected.lastName} (DNI:{" "}
+              {patientSelected.dni})
+            </Typography>
+          )}
+
+          {/* Mostrar aviso del estado actual de la persona */}
+          {avisoSaldo && (
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <Alert
+                severity={
+                  avisoSaldo.includes("saldo a favor") ||
+                  avisoSaldo.includes("cubre exactamente")
+                    ? "success"
+                    : avisoSaldo.includes("parcial")
+                    ? "warning"
+                    : "info"
+                }
+                sx={{ fontSize: "0.85rem" }}
+              >
+                <Typography variant="body2">{avisoSaldo}</Typography>
+              </Alert>
+            </Box>
+          )}
+
+          <TextField
+            label="Concepto"
+            fullWidth
+            margin="dense"
+            value={nuevoPago.concepto}
+            onChange={(e) =>
+              setNuevoPago({ ...nuevoPago, concepto: e.target.value })
+            }
+            placeholder="Pago de sesión"
+          />
+
+          <TextField
+            label="Método de pago"
+            select
+            fullWidth
+            margin="dense"
+            value={nuevoPago.metodo}
+            onChange={(e) =>
+              setNuevoPago({ ...nuevoPago, metodo: e.target.value })
+            }
+            required
+          >
+            <MenuItem value="efectivo">💵 Efectivo</MenuItem>
+            <MenuItem value="transferencia">✔ Transferencia</MenuItem>
+            <MenuItem value="tarjeta">💳 Tarjeta</MenuItem>
+          </TextField>
+
+          <TextField
+            label="Monto"
+            type="number"
+            fullWidth
+            margin="dense"
+            value={nuevoPago.monto}
+            onChange={(e) =>
+              setNuevoPago({ ...nuevoPago, monto: e.target.value })
+            }
+            required
+          />
+
+          <TextField
+            label="Fecha"
+            fullWidth
+            margin="dense"
+            value={nuevoPago.fecha}
+            onChange={(e) =>
+              setNuevoPago({ ...nuevoPago, fecha: e.target.value })
+            }
+            helperText="Formato: DD/MM/YYYY"
+          />
+
+          <Box sx={{ mt: 3, display: "flex", gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={handleClosePaymentModal}
+              fullWidth
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleRegistrarPago}
+              fullWidth
+              disabled={!nuevoPago.monto || !nuevoPago.metodo}
+            >
+              Registrar Pago
+            </Button>
+          </Box>
         </Box>
       </Modal>
 
