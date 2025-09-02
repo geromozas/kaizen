@@ -84,6 +84,11 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
     metodo: "",
     monto: "",
     fecha: new Date().toLocaleDateString("es-AR"),
+    hora: new Date().toLocaleTimeString("es-AR", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
   });
 
   const { activities = [], reloadActivities } = useActivities();
@@ -102,6 +107,11 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
       metodo: "",
       monto: "",
       fecha: new Date().toLocaleDateString("es-AR"),
+      hora: new Date().toLocaleTimeString("es-AR", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     });
     setAvisoSaldo("");
   };
@@ -249,6 +259,7 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
 
     const pagoFinal = {
       fecha: nuevoPago.fecha,
+      hora: nuevoPago.hora,
       concepto: nuevoPago.concepto || "Pago de sesión",
       metodo: nuevoPago.metodo,
       monto: montoPagado,
@@ -670,6 +681,17 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
               setNuevoPago({ ...nuevoPago, fecha: e.target.value })
             }
             helperText="Formato: DD/MM/YYYY"
+          />
+
+          <TextField
+            label="Hora"
+            fullWidth
+            margin="dense"
+            value={nuevoPago.hora}
+            onChange={(e) =>
+              setNuevoPago({ ...nuevoPago, hora: e.target.value })
+            }
+            helperText="HH:MM"
           />
 
           <Box sx={{ mt: 3, display: "flex", gap: 2 }}>

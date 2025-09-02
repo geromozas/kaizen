@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   collection,
@@ -42,6 +43,11 @@ export const PaymentsHistory = () => {
   const [personaActual, setPersonaActual] = useState(null);
   const [avisoSaldo, setAvisoSaldo] = useState("");
 
+  // Estados para el buscador
+  const [personasBusqueda, setPersonasBusqueda] = useState([]);
+  const [busquedaPersona, setBusquedaPersona] = useState("");
+  const [personaSeleccionada, setPersonaSeleccionada] = useState(null);
+
   const [nuevoPago, setNuevoPago] = useState({
     nombre: "",
     dni: "",
@@ -49,67 +55,107 @@ export const PaymentsHistory = () => {
     metodo: "",
     monto: "",
     fecha: new Date().toLocaleDateString("es-AR"),
+    hora: new Date().toLocaleTimeString("es-AR", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    }), // Agregado campo hora
     tipo: "", // cliente, paciente o quiropraxia
   });
 
   const cargarPagos = async () => {
-    // Cargar pagos de clientes (gimnasio)
-    const clientPaymentsSnap = await getDocs(collection(db, "payments"));
-    const clientPayments = clientPaymentsSnap.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      tipoPersona: "Cliente",
-      personaInfo: doc.data().alumno,
-      collection: "payments",
-    }));
+    try {
+      // Cargar pagos de clientes (gimnasio)
+      const clientPaymentsSnap = await getDocs(collection(db, "payments"));
+      const clientPayments = clientPaymentsSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        tipoPersona: "Cliente",
+        personaInfo: doc.data().alumno || {
+          name: "Sin nombre",
+          dni: "Sin DNI",
+        },
+        collection: "payments",
+      }));
 
-    // Cargar pagos de pacientes (kinesio)
-    const patientPaymentsSnap = await getDocs(
-      collection(db, "patientPayments")
-    );
-    const patientPayments = patientPaymentsSnap.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      tipoPersona: "Paciente",
-      personaInfo: doc.data().paciente,
-      collection: "patientPayments",
-    }));
+      // Cargar pagos de pacientes (kinesio)
+      const patientPaymentsSnap = await getDocs(
+        collection(db, "patientPayments")
+      );
+      const patientPayments = patientPaymentsSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        tipoPersona: "Paciente",
+        personaInfo: doc.data().paciente || {
+          name: "Sin nombre",
+          dni: "Sin DNI",
+        },
+        collection: "patientPayments",
+      }));
 
-    // Cargar pagos de quiropraxia
-    const quiropraxiaPaymentsSnap = await getDocs(
-      collection(db, "quiropraxiaPayments")
-    );
-    const quiropraxiaPayments = quiropraxiaPaymentsSnap.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      tipoPersona: "Quiropraxia",
-      personaInfo: doc.data().pacienteQuiro,
-      collection: "quiropraxiaPayments",
-    }));
+      // Cargar pagos de quiropraxia
+      const quiropraxiaPaymentsSnap = await getDocs(
+        collection(db, "quiropraxiaPayments")
+      );
+      const quiropraxiaPayments = quiropraxiaPaymentsSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        tipoPersona: "Quiropraxia",
+        personaInfo: doc.data().pacienteQuiro || {
+          name: "Sin nombre",
+          dni: "Sin DNI",
+        },
+        collection: "quiropraxiaPayments",
+      }));
 
-    // Combinar los tres arrays
-    const allPayments = [
-      ...clientPayments,
-      ...patientPayments,
-      ...quiropraxiaPayments,
-    ];
+      // Combinar los tres arrays
+      const allPayments = [
+        ...clientPayments,
+        ...patientPayments,
+        ...quiropraxiaPayments,
+      ];
 
-    const ordenado = allPayments.sort((a, b) => {
-      const [d1, m1, y1] = a.fecha.split("/").map(Number);
-      const [d2, m2, y2] = b.fecha.split("/").map(Number);
-      return new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1);
-    });
+      // Ordenar por createdAt si existe, sino por fecha y hora
+      const ordenado = allPayments.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return b.createdAt.toDate() - a.createdAt.toDate();
+        }
 
-    setPagos(ordenado);
+        // Fallback: ordenar por fecha y hora string
+        const [d1, m1, y1] = a.fecha.split("/").map(Number);
+        const [d2, m2, y2] = b.fecha.split("/").map(Number);
+        const fecha1 = new Date(y1, m1 - 1, d1);
+        const fecha2 = new Date(y2, m2 - 1, d2);
+
+        if (fecha1.getTime() === fecha2.getTime()) {
+          // Si las fechas son iguales, ordenar por hora
+          const hora1 = a.hora || "00:00";
+          const hora2 = b.hora || "00:00";
+          return hora2.localeCompare(hora1);
+        }
+
+        return fecha2 - fecha1;
+      });
+
+      setPagos(ordenado);
+    } catch (error) {
+      console.error("Error cargando pagos:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar los pagos. Revisa la consola para más detalles.",
+      });
+    }
   };
 
   useEffect(() => {
     cargarPagos();
   }, []);
 
+  // Buscar personas cuando se escribe en el buscador
   useEffect(() => {
-    const buscarPersona = async () => {
-      if (nuevoPago.dni.trim().length >= 5 && nuevoPago.tipo) {
+    const buscarPersonas = async () => {
+      if (busquedaPersona.trim().length >= 2 && nuevoPago.tipo) {
         let coleccion;
 
         if (nuevoPago.tipo === "cliente") {
@@ -120,63 +166,72 @@ export const PaymentsHistory = () => {
           coleccion = "quiropraxia";
         }
 
-        const q = query(
-          collection(db, coleccion),
-          where("dni", "==", nuevoPago.dni.trim())
-        );
-        const snap = await getDocs(q);
+        try {
+          const snap = await getDocs(collection(db, coleccion));
+          const personas = snap.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() }))
+            .filter(
+              (persona) =>
+                persona.name
+                  ?.toLowerCase()
+                  .includes(busquedaPersona.toLowerCase()) ||
+                persona.dni?.includes(busquedaPersona)
+            );
 
-        if (!snap.empty) {
-          const persona = snap.docs[0].data();
-          setPersonaActual(persona);
-          setNuevoPago((prev) => ({
-            ...prev,
-            nombre: persona.name,
-          }));
-
-          // Generar avisos según el estado de la persona
-          let aviso = "";
-          if (persona.saldoFavor > 0) {
-            aviso = `⚠️ Esta persona tiene un saldo a favor de $${persona.saldoFavor.toLocaleString(
-              "es-AR"
-            )}`;
-          } else if (persona.debt > 0) {
-            aviso = `💰 Deuda actual: $${persona.debt.toLocaleString("es-AR")}`;
-          } else {
-            aviso = "✅ La persona está al día";
-          }
-          setAvisoSaldo(aviso);
-        } else {
-          setPersonaActual(null);
-          setAvisoSaldo("");
-          setNuevoPago((prev) => ({
-            ...prev,
-            nombre: "",
-          }));
+          setPersonasBusqueda(personas);
+        } catch (error) {
+          console.error("Error buscando personas:", error);
+          setPersonasBusqueda([]);
         }
       } else {
-        setPersonaActual(null);
-        setAvisoSaldo("");
+        setPersonasBusqueda([]);
       }
     };
-    buscarPersona();
-  }, [nuevoPago.dni, nuevoPago.tipo]);
+
+    buscarPersonas();
+  }, [busquedaPersona, nuevoPago.tipo]);
+
+  // Función para seleccionar una persona del buscador
+  const seleccionarPersona = (persona) => {
+    setPersonaSeleccionada(persona);
+    setPersonaActual(persona);
+    setNuevoPago((prev) => ({
+      ...prev,
+      nombre: persona.name,
+      dni: persona.dni,
+    }));
+    setBusquedaPersona(persona.name);
+    setPersonasBusqueda([]);
+
+    // Generar avisos según el estado de la persona
+    let aviso = "";
+    if (persona.saldoFavor > 0) {
+      aviso = `⚠️ Esta persona tiene un saldo a favor de $${persona.saldoFavor.toLocaleString(
+        "es-AR"
+      )}`;
+    } else if (persona.debt > 0) {
+      aviso = `💰 Deuda actual: $${persona.debt.toLocaleString("es-AR")}`;
+    } else {
+      aviso = "✅ La persona está al día";
+    }
+    setAvisoSaldo(aviso);
+  };
 
   // Generar aviso dinámico según el monto ingresado
   useEffect(() => {
-    if (personaActual && nuevoPago.monto) {
+    if (personaSeleccionada && nuevoPago.monto) {
       const monto = parseInt(nuevoPago.monto);
       if (isNaN(monto) || monto <= 0) return;
 
       let avisoDetallado = "";
 
-      if (personaActual.saldoFavor > 0) {
-        const nuevoSaldoFavor = personaActual.saldoFavor + monto;
-        avisoDetallado = `💚 Saldo a favor actual: $${personaActual.saldoFavor.toLocaleString(
+      if (personaSeleccionada.saldoFavor > 0) {
+        const nuevoSaldoFavor = personaSeleccionada.saldoFavor + monto;
+        avisoDetallado = `💚 Saldo a favor actual: $${personaSeleccionada.saldoFavor.toLocaleString(
           "es-AR"
         )} → Nuevo saldo: $${nuevoSaldoFavor.toLocaleString("es-AR")}`;
-      } else if (personaActual.debt > 0) {
-        const deudaActual = personaActual.debt;
+      } else if (personaSeleccionada.debt > 0) {
+        const deudaActual = personaSeleccionada.debt;
         if (monto > deudaActual) {
           const saldoFavor = monto - deudaActual;
           avisoDetallado = `🎉 El pago de $${monto.toLocaleString(
@@ -206,28 +261,14 @@ export const PaymentsHistory = () => {
 
       setAvisoSaldo(avisoDetallado);
     }
-  }, [nuevoPago.monto, personaActual]);
-
-  const pagosFiltrados = pagos.filter((p) => {
-    const coincideTexto =
-      p.personaInfo.name?.toLowerCase().includes(filtro.toLowerCase()) ||
-      p.personaInfo.dni.includes(filtro);
-
-    const coincideMetodo =
-      !filtroMetodo || p.metodo?.toLowerCase() === filtroMetodo;
-
-    const coincideTipo =
-      !filtroTipo || p.tipoPersona.toLowerCase() === filtroTipo;
-
-    return coincideTexto && coincideMetodo && coincideTipo;
-  });
+  }, [nuevoPago.monto, personaSeleccionada]);
 
   const handleRegistrarPago = async () => {
-    if (!personaActual) {
+    if (!personaSeleccionada) {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "⚠️ No se encontró la persona con ese DNI.",
+        text: "⚠️ Debes seleccionar una persona primero.",
       });
       return;
     }
@@ -241,6 +282,7 @@ export const PaymentsHistory = () => {
 
     const pagoFinal = {
       fecha: nuevoPago.fecha,
+      hora: nuevoPago.hora, // Agregar hora al pago
       concepto: nuevoPago.concepto,
       metodo: nuevoPago.metodo,
       monto: montoPagado,
@@ -249,8 +291,8 @@ export const PaymentsHistory = () => {
     };
 
     // Calcular nuevo estado y montos
-    const deudaActual = personaActual.debt || 0;
-    const saldoFavorActual = personaActual.saldoFavor || 0;
+    const deudaActual = personaSeleccionada.debt || 0;
+    const saldoFavorActual = personaSeleccionada.saldoFavor || 0;
 
     let nuevaDeuda = 0;
     let nuevoSaldoFavor = 0;
@@ -280,112 +322,129 @@ export const PaymentsHistory = () => {
       nuevoEstado = "Al día";
     }
 
-    // Determinar colección y estructura según el tipo
-    if (nuevoPago.tipo === "cliente") {
-      pagoFinal.alumno = {
-        name: nuevoPago.nombre,
-        dni: nuevoPago.dni,
-      };
-      await addDoc(collection(db, "payments"), pagoFinal);
+    try {
+      // Determinar colección y estructura según el tipo
+      if (nuevoPago.tipo === "cliente") {
+        pagoFinal.alumno = {
+          name: nuevoPago.nombre,
+          dni: nuevoPago.dni,
+        };
+        await addDoc(collection(db, "payments"), pagoFinal);
 
-      // Actualizar cliente
-      const q = query(
-        collection(db, "clients"),
-        where("dni", "==", nuevoPago.dni)
-      );
-      const snap = await getDocs(q);
+        // Actualizar cliente
+        const q = query(
+          collection(db, "clients"),
+          where("dni", "==", nuevoPago.dni)
+        );
+        const snap = await getDocs(q);
 
-      if (!snap.empty) {
-        const clienteDoc = snap.docs[0];
-        const clienteRef = doc(db, "clients", clienteDoc.id);
+        if (!snap.empty) {
+          const clienteDoc = snap.docs[0];
+          const clienteRef = doc(db, "clients", clienteDoc.id);
 
-        await updateDoc(clienteRef, {
-          ultimoPago: nuevoPago.fecha,
-          debt: nuevaDeuda,
-          saldoFavor: nuevoSaldoFavor,
-          estado: nuevoEstado,
-        });
+          await updateDoc(clienteRef, {
+            ultimoPago: nuevoPago.fecha,
+            debt: nuevaDeuda,
+            saldoFavor: nuevoSaldoFavor,
+            estado: nuevoEstado,
+          });
+        }
+      } else if (nuevoPago.tipo === "paciente") {
+        pagoFinal.paciente = {
+          name: nuevoPago.nombre,
+          dni: nuevoPago.dni,
+        };
+        await addDoc(collection(db, "patientPayments"), pagoFinal);
+
+        // Actualizar paciente
+        const q = query(
+          collection(db, "patients"),
+          where("dni", "==", nuevoPago.dni)
+        );
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+          const pacienteDoc = snap.docs[0];
+          const pacienteRef = doc(db, "patients", pacienteDoc.id);
+
+          await updateDoc(pacienteRef, {
+            ultimoPago: nuevoPago.fecha,
+            debt: nuevaDeuda,
+            saldoFavor: nuevoSaldoFavor,
+            estado: nuevoEstado,
+          });
+        }
+      } else if (nuevoPago.tipo === "quiropraxia") {
+        pagoFinal.pacienteQuiro = {
+          name: nuevoPago.nombre,
+          dni: nuevoPago.dni,
+        };
+        await addDoc(collection(db, "quiropraxiaPayments"), pagoFinal);
+
+        // Actualizar paciente de quiropraxia
+        const q = query(
+          collection(db, "quiropraxia"),
+          where("dni", "==", nuevoPago.dni)
+        );
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+          const quiroDoc = snap.docs[0];
+          const quiroRef = doc(db, "quiropraxia", quiroDoc.id);
+
+          await updateDoc(quiroRef, {
+            ultimoPago: nuevoPago.fecha,
+            debt: nuevaDeuda,
+            saldoFavor: nuevoSaldoFavor,
+            estado: nuevoEstado,
+          });
+        }
       }
-    } else if (nuevoPago.tipo === "paciente") {
-      pagoFinal.paciente = {
-        name: nuevoPago.nombre,
-        dni: nuevoPago.dni,
-      };
-      await addDoc(collection(db, "patientPayments"), pagoFinal);
 
-      // Actualizar paciente
-      const q = query(
-        collection(db, "patients"),
-        where("dni", "==", nuevoPago.dni)
-      );
-      const snap = await getDocs(q);
+      setNuevoPago({
+        nombre: "",
+        dni: "",
+        concepto: "",
+        metodo: "",
+        monto: "",
+        fecha: new Date().toLocaleDateString("es-AR"),
+        hora: new Date().toLocaleTimeString("es-AR", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        tipo: "",
+      });
+      setPersonaActual(null);
+      setPersonaSeleccionada(null);
+      setBusquedaPersona("");
+      setPersonasBusqueda([]);
+      setAvisoSaldo("");
+      setOpenModal(false);
+      cargarPagos();
 
-      if (!snap.empty) {
-        const pacienteDoc = snap.docs[0];
-        const pacienteRef = doc(db, "patients", pacienteDoc.id);
-
-        await updateDoc(pacienteRef, {
-          ultimoPago: nuevoPago.fecha,
-          debt: nuevaDeuda,
-          saldoFavor: nuevoSaldoFavor,
-          estado: nuevoEstado,
-        });
-      }
-    } else if (nuevoPago.tipo === "quiropraxia") {
-      pagoFinal.pacienteQuiro = {
-        name: nuevoPago.nombre,
-        dni: nuevoPago.dni,
-      };
-      await addDoc(collection(db, "quiropraxiaPayments"), pagoFinal);
-
-      // Actualizar paciente de quiropraxia
-      const q = query(
-        collection(db, "quiropraxia"),
-        where("dni", "==", nuevoPago.dni)
-      );
-      const snap = await getDocs(q);
-
-      if (!snap.empty) {
-        const quiroDoc = snap.docs[0];
-        const quiroRef = doc(db, "quiropraxia", quiroDoc.id);
-
-        await updateDoc(quiroRef, {
-          ultimoPago: nuevoPago.fecha,
-          debt: nuevaDeuda,
-          saldoFavor: nuevoSaldoFavor,
-          estado: nuevoEstado,
-        });
-      }
+      Swal.fire({
+        icon: "success",
+        title: "Pago registrado",
+        text: "El pago fue registrado exitosamente ✅",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error registrando pago:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Hubo un problema registrando el pago. Intenta de nuevo.",
+      });
     }
-
-    setNuevoPago({
-      nombre: "",
-      dni: "",
-      concepto: "",
-      metodo: "",
-      monto: "",
-      fecha: new Date().toLocaleDateString("es-AR"),
-      tipo: "",
-    });
-    setPersonaActual(null);
-    setAvisoSaldo("");
-    setOpenModal(false);
-    cargarPagos();
-
-    Swal.fire({
-      icon: "success",
-      title: "Pago registrado",
-      text: "El pago fue registrado exitosamente ✅",
-      timer: 2000,
-      showConfirmButton: false,
-    });
   };
 
   const eliminarPago = async (pago) => {
     const result = await Swal.fire({
       title: "¿Eliminar pago?",
       text: `¿Seguro que deseas eliminar el pago de $${pago.monto.toLocaleString()} de ${
-        pago.personaInfo.name
+        pago.personaInfo?.name || "Sin nombre"
       }?`,
       icon: "warning",
       showCancelButton: true,
@@ -397,125 +456,156 @@ export const PaymentsHistory = () => {
 
     if (!result.isConfirmed) return;
 
-    await deleteDoc(doc(db, pago.collection, pago.id));
+    try {
+      await deleteDoc(doc(db, pago.collection, pago.id));
 
-    // Actualizar deuda según el tipo
-    if (pago.tipoPersona === "Cliente") {
-      const q = query(
-        collection(db, "clients"),
-        where("dni", "==", pago.personaInfo.dni)
-      );
-      const snap = await getDocs(q);
+      // Actualizar deuda según el tipo
+      if (pago.tipoPersona === "Cliente") {
+        const q = query(
+          collection(db, "clients"),
+          where("dni", "==", pago.personaInfo.dni)
+        );
+        const snap = await getDocs(q);
 
-      if (!snap.empty) {
-        const clienteDoc = snap.docs[0];
-        const clienteRef = doc(db, "clients", clienteDoc.id);
-        const clienteData = clienteDoc.data();
+        if (!snap.empty) {
+          const clienteDoc = snap.docs[0];
+          const clienteRef = doc(db, "clients", clienteDoc.id);
+          const clienteData = clienteDoc.data();
 
-        // Lógica inversa: restar el pago eliminado
-        const saldoFavorActual = clienteData.saldoFavor || 0;
-        const deudaActual = clienteData.debt || 0;
+          // Lógica inversa: restar el pago eliminado
+          const saldoFavorActual = clienteData.saldoFavor || 0;
+          const deudaActual = clienteData.debt || 0;
 
-        let nuevaDeuda = deudaActual;
-        let nuevoSaldoFavor = saldoFavorActual;
+          let nuevaDeuda = deudaActual;
+          let nuevoSaldoFavor = saldoFavorActual;
 
-        if (saldoFavorActual >= pago.monto) {
-          // Si el saldo a favor cubre el monto eliminado
-          nuevoSaldoFavor = saldoFavorActual - pago.monto;
-        } else {
-          // El pago eliminado genera deuda
-          const montoDeuda = pago.monto - saldoFavorActual;
-          nuevaDeuda = deudaActual + montoDeuda;
-          nuevoSaldoFavor = 0;
+          if (saldoFavorActual >= pago.monto) {
+            // Si el saldo a favor cubre el monto eliminado
+            nuevoSaldoFavor = saldoFavorActual - pago.monto;
+          } else {
+            // El pago eliminado genera deuda
+            const montoDeuda = pago.monto - saldoFavorActual;
+            nuevaDeuda = deudaActual + montoDeuda;
+            nuevoSaldoFavor = 0;
+          }
+
+          const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
+
+          await updateDoc(clienteRef, {
+            debt: nuevaDeuda,
+            saldoFavor: nuevoSaldoFavor,
+            estado: nuevoEstado,
+          });
         }
+      } else if (pago.tipoPersona === "Paciente") {
+        const q = query(
+          collection(db, "patients"),
+          where("dni", "==", pago.personaInfo.dni)
+        );
+        const snap = await getDocs(q);
 
-        const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
+        if (!snap.empty) {
+          const pacienteDoc = snap.docs[0];
+          const pacienteRef = doc(db, "patients", pacienteDoc.id);
+          const pacienteData = pacienteDoc.data();
 
-        await updateDoc(clienteRef, {
-          debt: nuevaDeuda,
-          saldoFavor: nuevoSaldoFavor,
-          estado: nuevoEstado,
-        });
-      }
-    } else if (pago.tipoPersona === "Paciente") {
-      const q = query(
-        collection(db, "patients"),
-        where("dni", "==", pago.personaInfo.dni)
-      );
-      const snap = await getDocs(q);
+          const saldoFavorActual = pacienteData.saldoFavor || 0;
+          const deudaActual = pacienteData.debt || 0;
 
-      if (!snap.empty) {
-        const pacienteDoc = snap.docs[0];
-        const pacienteRef = doc(db, "patients", pacienteDoc.id);
-        const pacienteData = pacienteDoc.data();
+          let nuevaDeuda = deudaActual;
+          let nuevoSaldoFavor = saldoFavorActual;
 
-        const saldoFavorActual = pacienteData.saldoFavor || 0;
-        const deudaActual = pacienteData.debt || 0;
+          if (saldoFavorActual >= pago.monto) {
+            nuevoSaldoFavor = saldoFavorActual - pago.monto;
+          } else {
+            const montoDeuda = pago.monto - saldoFavorActual;
+            nuevaDeuda = deudaActual + montoDeuda;
+            nuevoSaldoFavor = 0;
+          }
 
-        let nuevaDeuda = deudaActual;
-        let nuevoSaldoFavor = saldoFavorActual;
+          const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
 
-        if (saldoFavorActual >= pago.monto) {
-          nuevoSaldoFavor = saldoFavorActual - pago.monto;
-        } else {
-          const montoDeuda = pago.monto - saldoFavorActual;
-          nuevaDeuda = deudaActual + montoDeuda;
-          nuevoSaldoFavor = 0;
+          await updateDoc(pacienteRef, {
+            debt: nuevaDeuda,
+            saldoFavor: nuevoSaldoFavor,
+            estado: nuevoEstado,
+          });
         }
+      } else if (pago.tipoPersona === "Quiropraxia") {
+        const q = query(
+          collection(db, "quiropraxia"),
+          where("dni", "==", pago.personaInfo.dni)
+        );
+        const snap = await getDocs(q);
 
-        const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
+        if (!snap.empty) {
+          const quiroDoc = snap.docs[0];
+          const quiroRef = doc(db, "quiropraxia", quiroDoc.id);
+          const quiroData = quiroDoc.data();
 
-        await updateDoc(pacienteRef, {
-          debt: nuevaDeuda,
-          saldoFavor: nuevoSaldoFavor,
-          estado: nuevoEstado,
-        });
-      }
-    } else if (pago.tipoPersona === "Quiropraxia") {
-      const q = query(
-        collection(db, "quiropraxia"),
-        where("dni", "==", pago.personaInfo.dni)
-      );
-      const snap = await getDocs(q);
+          const saldoFavorActual = quiroData.saldoFavor || 0;
+          const deudaActual = quiroData.debt || 0;
 
-      if (!snap.empty) {
-        const quiroDoc = snap.docs[0];
-        const quiroRef = doc(db, "quiropraxia", quiroDoc.id);
-        const quiroData = quiroDoc.data();
+          let nuevaDeuda = deudaActual;
+          let nuevoSaldoFavor = saldoFavorActual;
 
-        const saldoFavorActual = quiroData.saldoFavor || 0;
-        const deudaActual = quiroData.debt || 0;
+          if (saldoFavorActual >= pago.monto) {
+            nuevoSaldoFavor = saldoFavorActual - pago.monto;
+          } else {
+            const montoDeuda = pago.monto - saldoFavorActual;
+            nuevaDeuda = deudaActual + montoDeuda;
+            nuevoSaldoFavor = 0;
+          }
 
-        let nuevaDeuda = deudaActual;
-        let nuevoSaldoFavor = saldoFavorActual;
+          const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
 
-        if (saldoFavorActual >= pago.monto) {
-          nuevoSaldoFavor = saldoFavorActual - pago.monto;
-        } else {
-          const montoDeuda = pago.monto - saldoFavorActual;
-          nuevaDeuda = deudaActual + montoDeuda;
-          nuevoSaldoFavor = 0;
+          await updateDoc(quiroRef, {
+            debt: nuevaDeuda,
+            saldoFavor: nuevoSaldoFavor,
+            estado: nuevoEstado,
+          });
         }
-
-        const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
-
-        await updateDoc(quiroRef, {
-          debt: nuevaDeuda,
-          saldoFavor: nuevoSaldoFavor,
-          estado: nuevoEstado,
-        });
       }
+
+      cargarPagos();
+      Swal.fire({
+        icon: "success",
+        title: "Pago eliminado",
+        text: "El pago fue eliminado correctamente ✅",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error eliminando pago:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Hubo un problema eliminando el pago. Intenta de nuevo.",
+      });
+    }
+  };
+
+  const pagosFiltrados = pagos.filter((p) => {
+    // Validar que p.personaInfo existe y tiene las propiedades necesarias
+    if (!p.personaInfo || typeof p.personaInfo !== "object") {
+      return false;
     }
 
-    cargarPagos();
-    Swal.fire({
-      icon: "success",
-      title: "Pago eliminado",
-      text: "El pago fue eliminado correctamente ✅",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  };
+    const nombre = p.personaInfo.name || "";
+    const dni = p.personaInfo.dni || "";
+
+    const coincideTexto =
+      nombre.toLowerCase().includes(filtro.toLowerCase()) ||
+      dni.includes(filtro);
+
+    const coincideMetodo =
+      !filtroMetodo || p.metodo?.toLowerCase() === filtroMetodo;
+
+    const coincideTipo =
+      !filtroTipo || p.tipoPersona.toLowerCase() === filtroTipo;
+
+    return coincideTexto && coincideMetodo && coincideTipo;
+  });
 
   return (
     <div className="historialPagos">
@@ -572,7 +662,7 @@ export const PaymentsHistory = () => {
           <TableHead>
             <TableRow>
               <TableCell>
-                <strong>Fecha</strong>
+                <strong>Fecha y Hora</strong>
               </TableCell>
               <TableCell>
                 <strong>Tipo</strong>
@@ -592,7 +682,14 @@ export const PaymentsHistory = () => {
           <TableBody>
             {pagosFiltrados.map((pago) => (
               <TableRow key={`${pago.collection}-${pago.id}`}>
-                <TableCell>{pago.fecha}</TableCell>
+                <TableCell>
+                  <div>{pago.fecha}</div>
+                  {pago.hora && (
+                    <div style={{ fontSize: "0.8em", color: "#666" }}>
+                      {pago.hora}
+                    </div>
+                  )}
+                </TableCell>
                 <TableCell>
                   <span className={`tipo ${pago.tipoPersona}`}>
                     {pago.tipoPersona === "Cliente" && "🏋️ Gimnasio"}
@@ -600,7 +697,7 @@ export const PaymentsHistory = () => {
                     {pago.tipoPersona === "Quiropraxia" && "🦴 Quiropraxia"}
                   </span>
                 </TableCell>
-                <TableCell>{pago.personaInfo.name}</TableCell>
+                <TableCell>{pago.personaInfo?.name || "Sin nombre"}</TableCell>
                 <TableCell>{renderMetodo(pago.metodo)}</TableCell>
                 <TableCell>${pago.monto.toLocaleString()}</TableCell>
                 <TableCell>
@@ -642,44 +739,101 @@ export const PaymentsHistory = () => {
             fullWidth
             margin="dense"
             value={nuevoPago.tipo}
-            onChange={(e) =>
-              setNuevoPago({ ...nuevoPago, tipo: e.target.value, nombre: "" })
-            }
+            onChange={(e) => {
+              setNuevoPago({
+                ...nuevoPago,
+                tipo: e.target.value,
+                nombre: "",
+                dni: "",
+              });
+              setPersonaSeleccionada(null);
+              setBusquedaPersona("");
+              setPersonasBusqueda([]);
+              setPersonaActual(null);
+              setAvisoSaldo("");
+            }}
           >
             <MenuItem value="cliente">🏋️ Gimnasio</MenuItem>
             <MenuItem value="paciente">🏥 Kinesio</MenuItem>
             <MenuItem value="quiropraxia">🦴 Quiropraxia</MenuItem>
           </TextField>
 
-          <TextField
-            label="DNI"
-            fullWidth
-            margin="dense"
-            value={nuevoPago.dni}
-            onChange={(e) =>
-              setNuevoPago({ ...nuevoPago, dni: e.target.value })
-            }
-            helperText={
-              nuevoPago.tipo &&
-              `Detectado como: ${
+          <Box sx={{ position: "relative" }}>
+            <TextField
+              label={`Buscar ${
                 nuevoPago.tipo === "cliente"
-                  ? "Cliente (Gimnasio)"
+                  ? "cliente"
                   : nuevoPago.tipo === "paciente"
-                  ? "Paciente (Kinesio)"
-                  : "Paciente (Quiropraxia)"
-              }`
-            }
-          />
+                  ? "paciente"
+                  : "paciente de quiropraxia"
+              }`}
+              fullWidth
+              margin="dense"
+              value={busquedaPersona}
+              onChange={(e) => setBusquedaPersona(e.target.value)}
+              disabled={!nuevoPago.tipo}
+              helperText={
+                nuevoPago.tipo
+                  ? `Busca por nombre o DNI del ${
+                      nuevoPago.tipo === "cliente" ? "cliente" : "paciente"
+                    }`
+                  : "Primero selecciona el tipo de persona"
+              }
+            />
 
-          <TextField
-            label="Nombre"
-            fullWidth
-            margin="dense"
-            value={nuevoPago.nombre}
-            onChange={(e) =>
-              setNuevoPago({ ...nuevoPago, nombre: e.target.value })
-            }
-          />
+            {/* Lista de resultados de búsqueda */}
+            {personasBusqueda.length > 0 && (
+              <Paper
+                sx={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  zIndex: 1000,
+                  maxHeight: 200,
+                  overflow: "auto",
+                  mt: 1,
+                }}
+              >
+                {personasBusqueda.map((persona) => (
+                  <Box
+                    key={persona.id}
+                    sx={{
+                      p: 2,
+                      cursor: "pointer",
+                      borderBottom: "1px solid #eee",
+                      "&:hover": { bgcolor: "#f5f5f5" },
+                    }}
+                    onClick={() => seleccionarPersona(persona)}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                      {persona.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      DNI: {persona.dni} |
+                      {persona.debt > 0 &&
+                        ` Deuda: ${persona.debt.toLocaleString()}`}
+                      {persona.saldoFavor > 0 &&
+                        ` Saldo a favor: ${persona.saldoFavor.toLocaleString()}`}
+                      {!persona.debt && !persona.saldoFavor && " Al día"}
+                    </Typography>
+                  </Box>
+                ))}
+              </Paper>
+            )}
+          </Box>
+
+          {/* Mostrar información de la persona seleccionada */}
+          {personaSeleccionada && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: "#f8f9fa", borderRadius: 1 }}>
+              <Typography variant="body2">
+                <strong>Seleccionado:</strong> {personaSeleccionada.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                DNI: {personaSeleccionada.dni}
+              </Typography>
+            </Box>
+          )}
 
           {/* Mostrar aviso del estado actual de la persona */}
           {avisoSaldo && (
@@ -699,6 +853,19 @@ export const PaymentsHistory = () => {
               </Alert>
             </Box>
           )}
+
+          <TextField
+            label="Concepto"
+            fullWidth
+            margin="dense"
+            value={nuevoPago.concepto}
+            onChange={(e) =>
+              setNuevoPago({ ...nuevoPago, concepto: e.target.value })
+            }
+            placeholder={
+              nuevoPago.tipo === "cliente" ? "Pago de clase" : "Pago de sesión"
+            }
+          />
 
           <TextField
             label="Método de pago"
@@ -726,13 +893,42 @@ export const PaymentsHistory = () => {
             }
           />
 
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <TextField
+              label="Fecha"
+              fullWidth
+              margin="dense"
+              value={nuevoPago.fecha}
+              onChange={(e) =>
+                setNuevoPago({ ...nuevoPago, fecha: e.target.value })
+              }
+              helperText="DD/MM/YYYY"
+            />
+
+            <TextField
+              label="Hora"
+              fullWidth
+              margin="dense"
+              value={nuevoPago.hora}
+              onChange={(e) =>
+                setNuevoPago({ ...nuevoPago, hora: e.target.value })
+              }
+              helperText="HH:MM"
+            />
+          </Box>
+
           <Button
             variant="contained"
             color="primary"
             fullWidth
             sx={{ mt: 2 }}
             onClick={handleRegistrarPago}
-            disabled={!nuevoPago.dni || !nuevoPago.monto || !nuevoPago.tipo}
+            disabled={
+              !personaSeleccionada ||
+              !nuevoPago.monto ||
+              !nuevoPago.tipo ||
+              !nuevoPago.metodo
+            }
           >
             Registrar Pago
           </Button>

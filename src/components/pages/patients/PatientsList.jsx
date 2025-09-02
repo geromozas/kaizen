@@ -35,7 +35,7 @@ import {
   where,
   updateDoc,
 } from "firebase/firestore";
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Cambiado de useState solo a useState + useEffect
 import { PatientForm } from "./PatientsForm";
 import { useActivities } from "../activities/useActivities";
 import { ActivityPricesManager } from "../activities/ActivityPricesManager";
@@ -83,6 +83,11 @@ const PatientsList = ({ patients = [], setIsChange }) => {
     metodo: "",
     monto: "",
     fecha: new Date().toLocaleDateString("es-AR"),
+    hora: new Date().toLocaleTimeString("es-AR", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
   });
 
   const { activities = [], reloadActivities } = useActivities();
@@ -101,6 +106,11 @@ const PatientsList = ({ patients = [], setIsChange }) => {
       metodo: "",
       monto: "",
       fecha: new Date().toLocaleDateString("es-AR"),
+      hora: new Date().toLocaleTimeString("es-AR", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     });
     setAvisoSaldo("");
   };
@@ -182,8 +192,8 @@ const PatientsList = ({ patients = [], setIsChange }) => {
     setIsChange(true);
   };
 
-  // Generar aviso dinámico según el monto ingresado
-  useState(() => {
+  // Generar aviso dinámico según el monto ingresado - CORREGIDO
+  useEffect(() => {
     if (patientSelected && nuevoPago.monto) {
       const monto = parseInt(nuevoPago.monto);
       if (isNaN(monto) || monto <= 0) return;
@@ -248,6 +258,7 @@ const PatientsList = ({ patients = [], setIsChange }) => {
 
     const pagoFinal = {
       fecha: nuevoPago.fecha,
+      hora: nuevoPago.hora,
       concepto: nuevoPago.concepto || "Pago de sesión",
       metodo: nuevoPago.metodo,
       monto: montoPagado,
@@ -644,6 +655,17 @@ const PatientsList = ({ patients = [], setIsChange }) => {
             helperText="Formato: DD/MM/YYYY"
           />
 
+          <TextField
+            label="Hora"
+            fullWidth
+            margin="dense"
+            value={nuevoPago.hora}
+            onChange={(e) =>
+              setNuevoPago({ ...nuevoPago, hora: e.target.value })
+            }
+            helperText="HH:MM"
+          />
+
           <Box sx={{ mt: 3, display: "flex", gap: 2 }}>
             <Button
               variant="outlined"
@@ -721,6 +743,12 @@ const PatientsList = ({ patients = [], setIsChange }) => {
                   <strong>Deuda:</strong> $
                   {(patientSelected.debt || 0).toLocaleString()}
                 </Typography>
+                {patientSelected.saldoFavor > 0 && (
+                  <Typography color="success.main">
+                    <strong>Saldo a favor:</strong> $
+                    {(patientSelected.saldoFavor || 0).toLocaleString()}
+                  </Typography>
+                )}
                 <Typography>
                   <strong>Último pago:</strong>{" "}
                   {patientSelected.ultimoPago || "Sin pagos"}
