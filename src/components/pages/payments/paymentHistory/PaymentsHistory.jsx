@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import {
   collection,
@@ -9,6 +8,7 @@ import {
   updateDoc,
   doc,
   deleteDoc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../../../../firebaseConfig";
 import {
@@ -170,13 +170,15 @@ export const PaymentsHistory = () => {
           const snap = await getDocs(collection(db, coleccion));
           const personas = snap.docs
             .map((doc) => ({ id: doc.id, ...doc.data() }))
-            .filter(
-              (persona) =>
-                persona.name
-                  ?.toLowerCase()
-                  .includes(busquedaPersona.toLowerCase()) ||
+            .filter((persona) => {
+              const nombreCompleto = `${persona.name || ""} ${
+                persona.lastName || ""
+              }`.toLowerCase();
+              return (
+                nombreCompleto.includes(busquedaPersona.toLowerCase()) ||
                 persona.dni?.includes(busquedaPersona)
-            );
+              );
+            });
 
           setPersonasBusqueda(personas);
         } catch (error) {
@@ -195,12 +197,21 @@ export const PaymentsHistory = () => {
   const seleccionarPersona = (persona) => {
     setPersonaSeleccionada(persona);
     setPersonaActual(persona);
+    const nombreCompleto = `${persona.name || ""} ${
+      persona.lastName || ""
+    }`.trim();
     setNuevoPago((prev) => ({
       ...prev,
-      nombre: persona.name,
+      nombre: nombreCompleto,
       dni: persona.dni,
     }));
-    setBusquedaPersona(persona.name);
+    setBusquedaPersona(nombreCompleto);
+    // setNuevoPago((prev) => ({
+    //   ...prev,
+    //   nombre: persona.name,
+    //   dni: persona.dni,
+    // }));
+    // setBusquedaPersona(persona.name);
     setPersonasBusqueda([]);
 
     // Generar avisos según el estado de la persona
@@ -282,7 +293,7 @@ export const PaymentsHistory = () => {
 
     const pagoFinal = {
       fecha: nuevoPago.fecha,
-      hora: nuevoPago.hora, // Agregar hora al pago
+      hora: nuevoPago.hora,
       concepto: nuevoPago.concepto,
       metodo: nuevoPago.metodo,
       monto: montoPagado,
@@ -299,108 +310,73 @@ export const PaymentsHistory = () => {
     let nuevoEstado = "Al día";
 
     if (saldoFavorActual > 0) {
-      // Si ya tiene saldo a favor, se suma al saldo
       nuevoSaldoFavor = saldoFavorActual + montoPagado;
-      nuevoEstado = "Al día"; // Técnicamente tiene saldo a favor, pero se maneja en el frontend
+      nuevoEstado = "Al día";
     } else if (deudaActual > 0) {
-      // Si tiene deuda
       if (montoPagado >= deudaActual) {
-        // Pago cubre o supera la deuda
         nuevoSaldoFavor = montoPagado - deudaActual;
         nuevaDeuda = 0;
         nuevoEstado = "Al día";
       } else {
-        // Pago parcial
         nuevaDeuda = deudaActual - montoPagado;
         nuevoSaldoFavor = 0;
         nuevoEstado = "Deudor";
       }
     } else {
-      // Si está al día, genera saldo a favor
       nuevoSaldoFavor = montoPagado;
       nuevaDeuda = 0;
       nuevoEstado = "Al día";
     }
 
+    // Datos para actualizar
+    const updateData = {
+      ultimoPago: nuevoPago.fecha,
+      debt: nuevaDeuda,
+      saldoFavor: nuevoSaldoFavor,
+      estado: nuevoEstado,
+    };
+
     try {
       // Determinar colección y estructura según el tipo
       if (nuevoPago.tipo === "cliente") {
         pagoFinal.alumno = {
-          name: nuevoPago.nombre,
-          dni: nuevoPago.dni,
+          name: personaSeleccionada.name,
+          lastName: personaSeleccionada.lastName, // Asegurar que se incluya el apellido
+          dni: personaSeleccionada.dni || "Sin DNI",
+          id: personaSeleccionada.id,
         };
         await addDoc(collection(db, "payments"), pagoFinal);
 
-        // Actualizar cliente
-        const q = query(
-          collection(db, "clients"),
-          where("dni", "==", nuevoPago.dni)
-        );
-        const snap = await getDocs(q);
-
-        if (!snap.empty) {
-          const clienteDoc = snap.docs[0];
-          const clienteRef = doc(db, "clients", clienteDoc.id);
-
-          await updateDoc(clienteRef, {
-            ultimoPago: nuevoPago.fecha,
-            debt: nuevaDeuda,
-            saldoFavor: nuevoSaldoFavor,
-            estado: nuevoEstado,
-          });
-        }
+        // 🔥 USAR SIEMPRE EL ID DIRECTO - NO BUSCAR POR DNI
+        const clientRef = doc(db, "clients", personaSeleccionada.id);
+        await updateDoc(clientRef, updateData);
       } else if (nuevoPago.tipo === "paciente") {
         pagoFinal.paciente = {
-          name: nuevoPago.nombre,
-          dni: nuevoPago.dni,
+          name: personaSeleccionada.name,
+          lastName: personaSeleccionada.lastName,
+          dni: personaSeleccionada.dni || "Sin DNI",
+          id: personaSeleccionada.id,
         };
         await addDoc(collection(db, "patientPayments"), pagoFinal);
 
-        // Actualizar paciente
-        const q = query(
-          collection(db, "patients"),
-          where("dni", "==", nuevoPago.dni)
-        );
-        const snap = await getDocs(q);
-
-        if (!snap.empty) {
-          const pacienteDoc = snap.docs[0];
-          const pacienteRef = doc(db, "patients", pacienteDoc.id);
-
-          await updateDoc(pacienteRef, {
-            ultimoPago: nuevoPago.fecha,
-            debt: nuevaDeuda,
-            saldoFavor: nuevoSaldoFavor,
-            estado: nuevoEstado,
-          });
-        }
+        // 🔥 USAR SIEMPRE EL ID DIRECTO - NO BUSCAR POR DNI
+        const patientRef = doc(db, "patients", personaSeleccionada.id);
+        await updateDoc(patientRef, updateData);
       } else if (nuevoPago.tipo === "quiropraxia") {
         pagoFinal.pacienteQuiro = {
-          name: nuevoPago.nombre,
-          dni: nuevoPago.dni,
+          name: personaSeleccionada.name,
+          lastName: personaSeleccionada.lastName,
+          dni: personaSeleccionada.dni || "Sin DNI",
+          id: personaSeleccionada.id,
         };
         await addDoc(collection(db, "quiropraxiaPayments"), pagoFinal);
 
-        // Actualizar paciente de quiropraxia
-        const q = query(
-          collection(db, "quiropraxia"),
-          where("dni", "==", nuevoPago.dni)
-        );
-        const snap = await getDocs(q);
-
-        if (!snap.empty) {
-          const quiroDoc = snap.docs[0];
-          const quiroRef = doc(db, "quiropraxia", quiroDoc.id);
-
-          await updateDoc(quiroRef, {
-            ultimoPago: nuevoPago.fecha,
-            debt: nuevaDeuda,
-            saldoFavor: nuevoSaldoFavor,
-            estado: nuevoEstado,
-          });
-        }
+        // 🔥 USAR SIEMPRE EL ID DIRECTO - NO BUSCAR POR DNI
+        const quiroRef = doc(db, "quiropraxia", personaSeleccionada.id);
+        await updateDoc(quiroRef, updateData);
       }
 
+      // Reset form
       setNuevoPago({
         nombre: "",
         dni: "",
@@ -457,24 +433,35 @@ export const PaymentsHistory = () => {
     if (!result.isConfirmed) return;
 
     try {
+      // Eliminar el pago de la base de datos
       await deleteDoc(doc(db, pago.collection, pago.id));
 
-      // Actualizar deuda según el tipo
-      if (pago.tipoPersona === "Cliente") {
-        const q = query(
-          collection(db, "clients"),
-          where("dni", "==", pago.personaInfo.dni)
-        );
-        const snap = await getDocs(q);
+      // 🔥 FUNCIÓN CORREGIDA: Usar SIEMPRE el ID directo para actualizar
+      const updatePersonaAfterDelete = async (collectionName, personaInfo) => {
+        if (!personaInfo || !personaInfo.id) {
+          console.error(
+            "No se puede actualizar: falta información de la persona"
+          );
+          return;
+        }
 
-        if (!snap.empty) {
-          const clienteDoc = snap.docs[0];
-          const clienteRef = doc(db, "clients", clienteDoc.id);
-          const clienteData = clienteDoc.data();
+        try {
+          // 🔥 USAR SIEMPRE EL ID DIRECTO - NO BUSCAR POR DNI
+          const personaRef = doc(db, collectionName, personaInfo.id);
 
-          // Lógica inversa: restar el pago eliminado
-          const saldoFavorActual = clienteData.saldoFavor || 0;
-          const deudaActual = clienteData.debt || 0;
+          // Obtener los datos actuales de la persona
+          const personaDoc = await getDoc(personaRef);
+
+          if (!personaDoc.exists()) {
+            console.error(
+              `Persona no encontrada en ${collectionName} con ID: ${personaInfo.id}`
+            );
+            return;
+          }
+
+          const personaData = personaDoc.data();
+          const saldoFavorActual = personaData.saldoFavor || 0;
+          const deudaActual = personaData.debt || 0;
 
           let nuevaDeuda = deudaActual;
           let nuevoSaldoFavor = saldoFavorActual;
@@ -491,80 +478,33 @@ export const PaymentsHistory = () => {
 
           const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
 
-          await updateDoc(clienteRef, {
+          await updateDoc(personaRef, {
             debt: nuevaDeuda,
             saldoFavor: nuevoSaldoFavor,
             estado: nuevoEstado,
           });
+
+          console.log(`✅ Persona actualizada en ${collectionName}:`, {
+            id: personaInfo.id,
+            nuevaDeuda,
+            nuevoSaldoFavor,
+            nuevoEstado,
+          });
+        } catch (error) {
+          console.error(
+            `Error actualizando persona en ${collectionName}:`,
+            error
+          );
         }
+      };
+
+      // Actualizar según el tipo de persona
+      if (pago.tipoPersona === "Cliente") {
+        await updatePersonaAfterDelete("clients", pago.personaInfo);
       } else if (pago.tipoPersona === "Paciente") {
-        const q = query(
-          collection(db, "patients"),
-          where("dni", "==", pago.personaInfo.dni)
-        );
-        const snap = await getDocs(q);
-
-        if (!snap.empty) {
-          const pacienteDoc = snap.docs[0];
-          const pacienteRef = doc(db, "patients", pacienteDoc.id);
-          const pacienteData = pacienteDoc.data();
-
-          const saldoFavorActual = pacienteData.saldoFavor || 0;
-          const deudaActual = pacienteData.debt || 0;
-
-          let nuevaDeuda = deudaActual;
-          let nuevoSaldoFavor = saldoFavorActual;
-
-          if (saldoFavorActual >= pago.monto) {
-            nuevoSaldoFavor = saldoFavorActual - pago.monto;
-          } else {
-            const montoDeuda = pago.monto - saldoFavorActual;
-            nuevaDeuda = deudaActual + montoDeuda;
-            nuevoSaldoFavor = 0;
-          }
-
-          const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
-
-          await updateDoc(pacienteRef, {
-            debt: nuevaDeuda,
-            saldoFavor: nuevoSaldoFavor,
-            estado: nuevoEstado,
-          });
-        }
+        await updatePersonaAfterDelete("patients", pago.personaInfo);
       } else if (pago.tipoPersona === "Quiropraxia") {
-        const q = query(
-          collection(db, "quiropraxia"),
-          where("dni", "==", pago.personaInfo.dni)
-        );
-        const snap = await getDocs(q);
-
-        if (!snap.empty) {
-          const quiroDoc = snap.docs[0];
-          const quiroRef = doc(db, "quiropraxia", quiroDoc.id);
-          const quiroData = quiroDoc.data();
-
-          const saldoFavorActual = quiroData.saldoFavor || 0;
-          const deudaActual = quiroData.debt || 0;
-
-          let nuevaDeuda = deudaActual;
-          let nuevoSaldoFavor = saldoFavorActual;
-
-          if (saldoFavorActual >= pago.monto) {
-            nuevoSaldoFavor = saldoFavorActual - pago.monto;
-          } else {
-            const montoDeuda = pago.monto - saldoFavorActual;
-            nuevaDeuda = deudaActual + montoDeuda;
-            nuevoSaldoFavor = 0;
-          }
-
-          const nuevoEstado = nuevaDeuda > 0 ? "Deudor" : "Al día";
-
-          await updateDoc(quiroRef, {
-            debt: nuevaDeuda,
-            saldoFavor: nuevoSaldoFavor,
-            estado: nuevoEstado,
-          });
-        }
+        await updatePersonaAfterDelete("quiropraxia", pago.personaInfo);
       }
 
       cargarPagos();
@@ -668,7 +608,7 @@ export const PaymentsHistory = () => {
                 <strong>Tipo</strong>
               </TableCell>
               <TableCell>
-                <strong>Nombre</strong>
+                <strong>Nombre y Apellido</strong>
               </TableCell>
               <TableCell>
                 <strong>Método</strong>
@@ -697,7 +637,11 @@ export const PaymentsHistory = () => {
                     {pago.tipoPersona === "Quiropraxia" && "🦴 Quiropraxia"}
                   </span>
                 </TableCell>
-                <TableCell>{pago.personaInfo?.name || "Sin nombre"}</TableCell>
+                <TableCell>
+                  {`${pago.personaInfo?.name || ""} ${
+                    pago.personaInfo?.lastName || ""
+                  }`.trim() || "Sin nombre"}
+                </TableCell>
                 <TableCell>{renderMetodo(pago.metodo)}</TableCell>
                 <TableCell>${pago.monto.toLocaleString()}</TableCell>
                 <TableCell>
@@ -806,8 +750,13 @@ export const PaymentsHistory = () => {
                     }}
                     onClick={() => seleccionarPersona(persona)}
                   >
-                    <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                    {/* <Typography variant="body2" sx={{ fontWeight: "bold" }}>
                       {persona.name}
+                    </Typography> */}
+                    <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                      {`${persona.name || ""} ${
+                        persona.lastName || ""
+                      }`.trim() || "Sin nombre"}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       DNI: {persona.dni} |
@@ -827,7 +776,10 @@ export const PaymentsHistory = () => {
           {personaSeleccionada && (
             <Box sx={{ mt: 2, p: 2, bgcolor: "#f8f9fa", borderRadius: 1 }}>
               <Typography variant="body2">
-                <strong>Seleccionado:</strong> {personaSeleccionada.name}
+                <strong>Seleccionado:</strong>{" "}
+                {`${personaSeleccionada.name || ""} ${
+                  personaSeleccionada.lastName || ""
+                }`.trim()}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 DNI: {personaSeleccionada.dni}

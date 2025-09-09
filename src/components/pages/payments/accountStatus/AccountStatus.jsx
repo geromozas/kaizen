@@ -303,7 +303,7 @@ const AccountStatus = () => {
                 <strong>Tipo</strong>
               </TableCell>
               <TableCell>
-                <strong>Nombre</strong>
+                <strong>Nombre y Apellido</strong>
               </TableCell>
               <TableCell>
                 <strong>Estado</strong>

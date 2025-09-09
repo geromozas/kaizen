@@ -96,12 +96,14 @@ const ClientsList = ({ clients = [], setIsChange }) => {
     setOpenProfile(false);
     setClientSchedules([]);
   };
+
   const handleClosePricesManager = () => setOpenPricesManager(false);
+
   const handleClosePaymentModal = () => {
     setOpenPaymentModal(false);
     setClientSelected(null);
     setNuevoPago({
-      concepto: "",
+      concepto: "", // Se resetea vacío al cerrar
       metodo: "",
       monto: "",
       fecha: new Date().toLocaleDateString("es-AR"),
@@ -134,6 +136,24 @@ const ClientsList = ({ clients = [], setIsChange }) => {
       aviso = "✅ La persona está al día";
     }
     setAvisoSaldo(aviso);
+
+    // 🔥 MODIFICACIÓN: Precargar concepto con la actividad del cliente
+    const conceptoPrecargado = client.actividad
+      ? `${client.actividad}`
+      : "Pago de clase";
+
+    setNuevoPago({
+      concepto: conceptoPrecargado, // ✅ Concepto precargado
+      metodo: "",
+      monto: "",
+      fecha: new Date().toLocaleDateString("es-AR"),
+      hora: new Date().toLocaleTimeString("es-AR", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    });
+
     setOpenPaymentModal(true);
   };
 
@@ -238,6 +258,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
     }
   }, [nuevoPago.monto, clientSelected]);
 
+  // Función modificada para manejar pagos correctamente en ClientsList.jsx
   const handleRegistrarPago = async () => {
     if (!clientSelected || !nuevoPago.monto || !nuevoPago.metodo) {
       Swal.fire({
@@ -265,7 +286,9 @@ const ClientsList = ({ clients = [], setIsChange }) => {
       createdAt: Timestamp.fromDate(fechaPago),
       alumno: {
         name: clientSelected.name,
-        dni: clientSelected.dni,
+        lastName: clientSelected.lastName, // ✅ Agregar apellido
+        dni: clientSelected.dni || "Sin DNI",
+        id: clientSelected.id,
       },
     };
 
@@ -301,28 +324,26 @@ const ClientsList = ({ clients = [], setIsChange }) => {
       nuevoEstado = "Al día";
     }
 
+    // Datos para actualizar el cliente
+    const updateData = {
+      ultimoPago: nuevoPago.fecha,
+      debt: nuevaDeuda,
+      saldoFavor: nuevoSaldoFavor,
+      estado: nuevoEstado,
+    };
+
     try {
-      // Registrar el pago en la colección de pagos (asumiendo que existe "payments")
+      // Registrar el pago en la colección de pagos
       await addDoc(collection(db, "payments"), pagoFinal);
 
-      // Actualizar el cliente
-      const q = query(
-        collection(db, "clients"),
-        where("dni", "==", clientSelected.dni)
-      );
-      const snap = await getDocs(q);
+      // Actualizar el cliente - SIEMPRE usar el ID directo
+      const clientRef = doc(db, "clients", clientSelected.id);
 
-      if (!snap.empty) {
-        const clientDoc = snap.docs[0];
-        const clientRef = doc(db, "clients", clientDoc.id);
+      console.log("Actualizando cliente con ID:", clientSelected.id);
+      console.log("Datos a actualizar:", updateData);
 
-        await updateDoc(clientRef, {
-          ultimoPago: nuevoPago.fecha,
-          debt: nuevaDeuda,
-          saldoFavor: nuevoSaldoFavor,
-          estado: nuevoEstado,
-        });
-      }
+      await updateDoc(clientRef, updateData);
+      console.log("✅ Cliente actualizado exitosamente");
 
       handleClosePaymentModal();
       setIsChange(true); // Recargar la lista de clientes
