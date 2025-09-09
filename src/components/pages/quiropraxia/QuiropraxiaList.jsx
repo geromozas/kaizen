@@ -136,6 +136,24 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
       aviso = "✅ La persona está al día";
     }
     setAvisoSaldo(aviso);
+
+    // 🔥 MODIFICACIÓN: Precargar concepto con la actividad del paciente
+    const conceptoPrecargado = patient.actividad
+      ? `${patient.actividad}`
+      : "Pago de sesión";
+
+    setNuevoPago({
+      concepto: conceptoPrecargado, // ✅ Concepto precargado
+      metodo: "",
+      monto: "",
+      fecha: new Date().toLocaleDateString("es-AR"),
+      hora: new Date().toLocaleTimeString("es-AR", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    });
+
     setOpenPaymentModal(true);
   };
 
@@ -267,7 +285,9 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
       createdAt: Timestamp.fromDate(fechaPago),
       pacienteQuiro: {
         name: patientSelected.name,
-        dni: patientSelected.dni,
+        lastName: patientSelected.lastName, // ✅ Agregar apellido
+        dni: patientSelected.dni || "Sin DNI",
+        id: patientSelected.id,
       },
     };
 
@@ -303,28 +323,26 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
       nuevoEstado = "Al día";
     }
 
+    // Datos para actualizar el paciente
+    const updateData = {
+      ultimoPago: nuevoPago.fecha,
+      debt: nuevaDeuda,
+      saldoFavor: nuevoSaldoFavor,
+      estado: nuevoEstado,
+    };
+
     try {
-      // Registrar el pago en quiropraxiaPayments
+      // Registrar el pago en la colección de pagos
       await addDoc(collection(db, "quiropraxiaPayments"), pagoFinal);
 
-      // Actualizar el paciente de quiropraxia
-      const q = query(
-        collection(db, "quiropraxia"),
-        where("dni", "==", patientSelected.dni)
-      );
-      const snap = await getDocs(q);
+      // Actualizar el paciente - SIEMPRE usar el ID directo
+      const quiroRef = doc(db, "quiropraxia", patientSelected.id);
 
-      if (!snap.empty) {
-        const quiroDoc = snap.docs[0];
-        const quiroRef = doc(db, "quiropraxia", quiroDoc.id);
+      console.log("Actualizando paciente con ID:", patientSelected.id);
+      console.log("Datos a actualizar:", updateData);
 
-        await updateDoc(quiroRef, {
-          ultimoPago: nuevoPago.fecha,
-          debt: nuevaDeuda,
-          saldoFavor: nuevoSaldoFavor,
-          estado: nuevoEstado,
-        });
-      }
+      await updateDoc(quiroRef, updateData);
+      console.log("✅ Paciente actualizado exitosamente");
 
       handleClosePaymentModal();
       setIsChange(true); // Recargar la lista de pacientes
@@ -779,6 +797,12 @@ const QuiropraxiaList = ({ patients = [], setIsChange }) => {
                   <strong>Deuda:</strong> $
                   {(patientSelected.debt || 0).toLocaleString()}
                 </Typography>
+                {patientSelected.saldoFavor > 0 && (
+                  <Typography color="success.main">
+                    <strong>Saldo a favor:</strong> $
+                    {(patientSelected.saldoFavor || 0).toLocaleString()}
+                  </Typography>
+                )}
                 <Typography>
                   <strong>Último pago:</strong>{" "}
                   {patientSelected.ultimoPago || "Sin pagos"}
