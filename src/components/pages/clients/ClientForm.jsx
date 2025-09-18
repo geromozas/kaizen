@@ -12,6 +12,7 @@
 //   Accordion,
 //   AccordionSummary,
 //   AccordionDetails,
+//   Alert,
 // } from "@mui/material";
 // import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 // import { useState, useEffect } from "react";
@@ -75,6 +76,11 @@
 //   const [activityType, setActivityType] = useState("gimnasio");
 //   const [replicateToYear, setReplicateToYear] = useState(true);
 
+//   // Estados para control de recálculo de deuda
+//   const [showDebtRecalculation, setShowDebtRecalculation] = useState(false);
+//   const [originalDebt, setOriginalDebt] = useState(0);
+//   const [manualDebtOverride, setManualDebtOverride] = useState(false);
+
 //   const proporciones = [
 //     { label: "Mes completo", factor: 1 },
 //     { label: "3/4 del mes", factor: 0.75 },
@@ -111,8 +117,17 @@
 //     }
 //   };
 
+//   // Función para verificar si el recálculo afectaría la deuda existente
+//   const shouldShowRecalculationWarning = (newDebt, currentDebt) => {
+//     return clientSelected && currentDebt !== 0 && newDebt !== currentDebt;
+//   };
+
 //   const handleChange = (e) => {
 //     const { name, value } = e.target;
+
+//     // Si es un cliente existente y estamos cambiando actividad o proporción
+//     const isDebtAffectingChange =
+//       clientSelected && (name === "actividad" || name === "proporcion");
 
 //     let updatedActividad =
 //       name === "actividad"
@@ -124,14 +139,40 @@
 //         ? parseFloat(value)
 //         : clientSelected?.proporcion || newClient.proporcion;
 
-//     const updatedDebt = calcularDeuda(updatedActividad, updatedProporcion);
+//     const calculatedDebt = calcularDeuda(updatedActividad, updatedProporcion);
+//     const currentDebt = clientSelected?.debt || newClient.debt;
+
+//     // Verificar si necesitamos mostrar advertencia de recálculo
+//     if (
+//       isDebtAffectingChange &&
+//       shouldShowRecalculationWarning(calculatedDebt, currentDebt)
+//     ) {
+//       if (!showDebtRecalculation) {
+//         setOriginalDebt(currentDebt);
+//         setShowDebtRecalculation(true);
+//       }
+//     }
+
+//     // Determinar qué deuda usar
+//     let finalDebt;
+//     if (clientSelected && manualDebtOverride) {
+//       // Si el usuario decidió mantener la deuda manual, no recalcular
+//       finalDebt = currentDebt;
+//     } else if (clientSelected && !showDebtRecalculation) {
+//       // Si es edición pero no hay cambios que afecten la deuda
+//       finalDebt = name === "debt" ? parseFloat(value) || 0 : currentDebt;
+//     } else {
+//       // Para nuevos clientes o cuando el usuario acepta recalcular
+//       finalDebt = calculatedDebt;
+//     }
+
 //     const currentSaldoFavor =
 //       clientSelected?.saldoFavor || newClient.saldoFavor || 0;
-//     const updatedEstado = calcularEstado(updatedDebt, currentSaldoFavor);
+//     const updatedEstado = calcularEstado(finalDebt, currentSaldoFavor);
 
 //     const updatedValues = {
 //       [name]: name === "proporcion" ? parseFloat(value) : value,
-//       debt: updatedDebt,
+//       debt: finalDebt,
 //       estado: updatedEstado,
 //     };
 
@@ -148,7 +189,63 @@
 //     }
 //   };
 
-//   // Funciones para manejo de horarios
+//   // Función para manejar la decisión del usuario sobre el recálculo
+//   const handleDebtRecalculationDecision = (shouldRecalculate) => {
+//     const currentClient = clientSelected;
+//     const calculatedDebt = calcularDeuda(
+//       currentClient.actividad,
+//       currentClient.proporcion
+//     );
+
+//     if (shouldRecalculate) {
+//       // Recalcular la deuda
+//       const updatedEstado = calcularEstado(
+//         calculatedDebt,
+//         currentClient.saldoFavor || 0
+//       );
+//       setClientSelected({
+//         ...currentClient,
+//         debt: calculatedDebt,
+//         estado: updatedEstado,
+//       });
+//       setManualDebtOverride(false);
+//     } else {
+//       // Mantener la deuda original
+//       setManualDebtOverride(true);
+//     }
+
+//     setShowDebtRecalculation(false);
+//   };
+
+//   // Función para permitir edición manual de la deuda
+//   const handleManualDebtChange = (e) => {
+//     const newDebt = parseFloat(e.target.value) || 0;
+//     const currentClient = clientSelected || newClient;
+//     const updatedEstado = calcularEstado(
+//       newDebt,
+//       currentClient.saldoFavor || 0
+//     );
+
+//     const updatedValues = {
+//       debt: newDebt,
+//       estado: updatedEstado,
+//     };
+
+//     if (clientSelected) {
+//       setClientSelected({
+//         ...clientSelected,
+//         ...updatedValues,
+//       });
+//       setManualDebtOverride(true);
+//     } else {
+//       setNewClient({
+//         ...newClient,
+//         ...updatedValues,
+//       });
+//     }
+//   };
+
+//   // Resto de las funciones de horarios (sin cambios)
 //   const handleDayChange = (dayValue) => {
 //     setSelectedDays((prev) => {
 //       if (prev.includes(dayValue)) {
@@ -310,7 +407,6 @@
 
 //         const docRef = await addDoc(clientsRef, clientData);
 
-//         // Crear horarios si está habilitado
 //         if (createSchedules) {
 //           await createClientSchedules(docRef.id, clientData);
 //         }
@@ -336,23 +432,12 @@
 //     }
 //   };
 
+//   // Efecto simplificado para inicialización
 //   useEffect(() => {
-//     if (clientSelected && activities.length > 0) {
-//       const debt = calcularDeuda(
-//         clientSelected.actividad,
-//         clientSelected.proporcion
-//       );
-//       const estado = calcularEstado(debt, clientSelected.saldoFavor || 0);
-
-//       if (debt !== clientSelected.debt || estado !== clientSelected.estado) {
-//         setClientSelected({
-//           ...clientSelected,
-//           debt: debt,
-//           estado: estado,
-//         });
-//       }
+//     if (clientSelected) {
+//       setOriginalDebt(clientSelected.debt || 0);
 //     }
-//   }, [clientSelected, activities]);
+//   }, [clientSelected?.id]); // Solo cuando cambia el cliente seleccionado
 
 //   return (
 //     <Box
@@ -465,10 +550,62 @@
 //         ))}
 //       </TextField>
 
-//       <Typography>
-//         <strong>Deuda estimada:</strong> $
-//         {(clientSelected?.debt || newClient.debt).toLocaleString()}
-//       </Typography>
+//       {/* Alerta para recálculo de deuda */}
+//       {showDebtRecalculation && (
+//         <Alert
+//           severity="warning"
+//           sx={{ mb: 2 }}
+//           action={
+//             <Box sx={{ display: "flex", gap: 1 }}>
+//               <Button
+//                 size="small"
+//                 onClick={() => handleDebtRecalculationDecision(true)}
+//                 color="warning"
+//               >
+//                 Recalcular
+//               </Button>
+//               <Button
+//                 size="small"
+//                 onClick={() => handleDebtRecalculationDecision(false)}
+//                 variant="outlined"
+//                 color="warning"
+//               >
+//                 Mantener actual
+//               </Button>
+//             </Box>
+//           }
+//         >
+//           <Typography variant="body2">
+//             <strong>¡Atención!</strong> Los cambios en la actividad o proporción
+//             afectarían la deuda.
+//             <br />
+//             <strong>Deuda actual:</strong> ${originalDebt.toLocaleString()}
+//             <br />
+//             <strong>Nueva deuda calculada:</strong> $
+//             {calcularDeuda(
+//               clientSelected?.actividad || newClient.actividad,
+//               clientSelected?.proporcion || newClient.proporcion
+//             ).toLocaleString()}
+//           </Typography>
+//         </Alert>
+//       )}
+
+//       {/* Campo de deuda - editable para clientes existentes */}
+//       <TextField
+//         label="Deuda"
+//         type="number"
+//         value={clientSelected?.debt || newClient.debt}
+//         onChange={handleManualDebtChange}
+//         InputProps={{
+//           startAdornment: <Typography>$</Typography>,
+//           readOnly: !clientSelected, // Solo editable para clientes existentes
+//         }}
+//         helperText={
+//           clientSelected
+//             ? "Puedes editar la deuda manualmente si es necesario"
+//             : "La deuda se calcula automáticamente"
+//         }
+//       />
 
 //       <Typography>
 //         <strong>Estado:</strong>{" "}
@@ -745,6 +882,12 @@ export const ClientForm = ({
     { label: "1/4 del mes", factor: 0.25 },
   ];
 
+  // Función para obtener la fecha actual en formato YYYY-MM-DD
+  const getCurrentDate = () => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  };
+
   const [newClient, setNewClient] = useState({
     name: "",
     lastName: "",
@@ -756,6 +899,7 @@ export const ClientForm = ({
     proporcion: 1,
     debt: 0,
     lastpay: "",
+    fechaInicio: getCurrentDate(), // Fecha de inicio por defecto hoy
   });
 
   const calcularDeuda = (actividadLabel, proporcion) => {
@@ -900,6 +1044,12 @@ export const ClientForm = ({
         ...updatedValues,
       });
     }
+  };
+
+  // Función para determinar si el campo de deuda debe estar en rojo
+  const isDebtPositive = () => {
+    const currentDebt = clientSelected?.debt || newClient.debt;
+    return currentDebt > 0;
   };
 
   // Resto de las funciones de horarios (sin cambios)
@@ -1060,6 +1210,7 @@ export const ClientForm = ({
         const clientData = {
           ...newClient,
           estado: estadoInicial,
+          fechaCreacion: new Date().toISOString(), // Agregar timestamp de creación
         };
 
         const docRef = await addDoc(clientsRef, clientData);
@@ -1167,6 +1318,19 @@ export const ClientForm = ({
         required
       />
 
+      {/* Campo de fecha de inicio */}
+      <TextField
+        label="Fecha de Inicio"
+        name="fechaInicio"
+        type="date"
+        value={clientSelected?.fechaInicio || newClient.fechaInicio}
+        onChange={handleChange}
+        InputLabelProps={{
+          shrink: true,
+        }}
+        required
+      />
+
       <TextField
         select
         label="Actividad"
@@ -1247,7 +1411,7 @@ export const ClientForm = ({
         </Alert>
       )}
 
-      {/* Campo de deuda - editable para clientes existentes */}
+      {/* Campo de deuda con estilo condicional */}
       <TextField
         label="Deuda"
         type="number"
@@ -1262,6 +1426,35 @@ export const ClientForm = ({
             ? "Puedes editar la deuda manualmente si es necesario"
             : "La deuda se calcula automáticamente"
         }
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            backgroundColor: isDebtPositive() ? "#ffebee" : "transparent",
+            borderColor: isDebtPositive() ? "#f44336" : undefined,
+            "&:hover": {
+              backgroundColor: isDebtPositive() ? "#ffcdd2" : undefined,
+            },
+            "&.Mui-focused": {
+              backgroundColor: isDebtPositive() ? "#ffebee" : "transparent",
+            },
+          },
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: isDebtPositive() ? "#f44336" : undefined,
+          },
+          "& .MuiInputLabel-root": {
+            color: isDebtPositive() ? "#f44336" : undefined,
+            "&.Mui-focused": {
+              color: isDebtPositive() ? "#f44336" : undefined,
+            },
+          },
+          "& .MuiInputBase-input": {
+            color: isDebtPositive() ? "#000" : undefined,
+            fontWeight: isDebtPositive() ? "bold" : "normal",
+          },
+          "& .MuiInputAdornment-root .MuiTypography-root": {
+            color: isDebtPositive() ? "#f44336" : undefined,
+            fontWeight: isDebtPositive() ? "bold" : "normal",
+          },
+        }}
       />
 
       <Typography>
@@ -1269,6 +1462,20 @@ export const ClientForm = ({
         {clientSelected?.estado ||
           calcularEstado(newClient.debt, newClient.saldoFavor || 0)}
       </Typography>
+
+      {/* Mostrar fecha de creación para clientes existentes */}
+      {clientSelected && clientSelected.fechaCreacion && (
+        <Typography variant="body2" color="textSecondary">
+          <strong>Creado el:</strong>{" "}
+          {new Date(clientSelected.fechaCreacion).toLocaleDateString("es-ES", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </Typography>
+      )}
 
       {/* Sección de horarios solo para creación de nuevos clientes */}
       {!clientSelected && (
