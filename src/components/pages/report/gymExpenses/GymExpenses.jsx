@@ -2,6 +2,7 @@
 // import "./GymExpenses.css";
 // import DeleteIcon from "@mui/icons-material/Delete";
 // import EditIcon from "@mui/icons-material/Edit";
+// import { TextField, MenuItem } from "@mui/material";
 // import {
 //   collection,
 //   addDoc,
@@ -15,10 +16,21 @@
 
 // const GymExpenses = ({ onGastosChange, selectedDate }) => {
 //   const [expenses, setExpenses] = useState([]);
-//   const [form, setForm] = useState({ concept: "", amount: "" });
+//   const [form, setForm] = useState({
+//     concept: "",
+//     amount: "",
+//     paymentMethod: "efectivo",
+//   });
 //   const [editId, setEditId] = useState(null);
 
 //   const expensesRef = collection(db, "gastos");
+
+//   // Opciones de métodos de pago
+//   const paymentMethods = [
+//     { value: "efectivo", label: "Efectivo" },
+//     { value: "tarjeta", label: "Tarjeta" },
+//     { value: "transferencia", label: "Transferencia" },
+//   ];
 
 //   const fetchExpenses = async () => {
 //     const snapshot = await getDocs(expensesRef);
@@ -63,28 +75,51 @@
 
 //     if (editId) {
 //       const docRef = doc(db, "gastos", editId);
-//       await updateDoc(docRef, { concept: form.concept, amount });
+//       await updateDoc(docRef, {
+//         concept: form.concept,
+//         amount,
+//         paymentMethod: form.paymentMethod,
+//       });
 //       setEditId(null);
 //     } else {
 //       await addDoc(expensesRef, {
 //         concept: form.concept,
 //         amount,
+//         paymentMethod: form.paymentMethod,
 //         createdAt: Timestamp.fromDate(dateForExpense),
 //       });
 //     }
 
-//     setForm({ concept: "", amount: "" });
+//     setForm({ concept: "", amount: "", paymentMethod: "efectivo" });
 //     fetchExpenses();
 //   };
 
 //   const handleEdit = (exp) => {
-//     setForm({ concept: exp.concept, amount: exp.amount });
+//     setForm({
+//       concept: exp.concept,
+//       amount: exp.amount,
+//       paymentMethod: exp.paymentMethod || "efectivo",
+//     });
 //     setEditId(exp.id);
 //   };
 
 //   const handleDelete = async (id) => {
 //     await deleteDoc(doc(db, "gastos", id));
 //     fetchExpenses();
+//   };
+
+//   // Función para obtener el ícono según el método de pago
+//   const getPaymentMethodIcon = (method) => {
+//     switch (method) {
+//       case "efectivo":
+//         return "💵";
+//       case "tarjeta":
+//         return "💳";
+//       case "transferencia":
+//         return "🏦";
+//       default:
+//         return "💵";
+//     }
 //   };
 
 //   const total = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
@@ -109,6 +144,20 @@
 //           value={form.amount}
 //           onChange={handleChange}
 //         />
+//         <TextField
+//           select
+//           name="paymentMethod"
+//           label="Método de Pago"
+//           value={form.paymentMethod}
+//           onChange={handleChange}
+//           style={{ minWidth: "150px", marginLeft: "10px" }}
+//         >
+//           {paymentMethods.map((option) => (
+//             <MenuItem key={option.value} value={option.value}>
+//               {option.label}
+//             </MenuItem>
+//           ))}
+//         </TextField>
 //         <button onClick={handleAdd}>{editId ? "Actualizar" : "Agregar"}</button>
 //       </div>
 
@@ -117,6 +166,7 @@
 //           <tr>
 //             <th>Concepto</th>
 //             <th>Monto</th>
+//             <th>Método de Pago</th>
 //             <th>Acciones</th>
 //           </tr>
 //         </thead>
@@ -126,6 +176,15 @@
 //               <td>{exp.concept}</td>
 //               <td className="amount-red">
 //                 ${parseFloat(exp.amount).toLocaleString("es-AR")}
+//               </td>
+//               <td>
+//                 <span
+//                   style={{ display: "flex", alignItems: "center", gap: "5px" }}
+//                 >
+//                   {getPaymentMethodIcon(exp.paymentMethod)}
+//                   {paymentMethods.find((m) => m.value === exp.paymentMethod)
+//                     ?.label || "Efectivo"}
+//                 </span>
 //               </td>
 //               <td>
 //                 <EditIcon className="icon" onClick={() => handleEdit(exp)} />
@@ -145,6 +204,7 @@
 //             <td className="amount-red">
 //               <strong>${total.toLocaleString("es-AR")}</strong>
 //             </td>
+//             <td></td>
 //             <td></td>
 //           </tr>
 //         </tfoot>
@@ -170,7 +230,11 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../../firebaseConfig";
 
-const GymExpenses = ({ onGastosChange, selectedDate }) => {
+const GymExpenses = ({
+  onGastosChange,
+  selectedDate,
+  onExpensesDataChange,
+}) => {
   const [expenses, setExpenses] = useState([]);
   const [form, setForm] = useState({
     concept: "",
@@ -214,7 +278,10 @@ const GymExpenses = ({ onGastosChange, selectedDate }) => {
   useEffect(() => {
     const total = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
     if (onGastosChange) onGastosChange(total);
-  }, [expenses, onGastosChange]);
+
+    // Pasar los datos de gastos al componente padre para la descarga/impresión
+    if (onExpensesDataChange) onExpensesDataChange(expenses);
+  }, [expenses, onGastosChange, onExpensesDataChange]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
