@@ -38,11 +38,12 @@ import {
 import { useState, useEffect } from "react";
 import { useActivities } from "../activities/useActivities";
 import { db } from "../../../firebaseConfig";
-import { QuiropraxiaForm } from "./QuiropraxiaForm";
+
 import { ActivityPricesManager } from "../activities/ActivityPricesManager";
 import { Timestamp } from "firebase/firestore";
 import Swal from "sweetalert2";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import { QuiropraxiaForm } from "./QuiropraxiaForm";
 
 const style = {
   position: "absolute",

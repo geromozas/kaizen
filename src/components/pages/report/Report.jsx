@@ -96,31 +96,50 @@ const Report = () => {
         setTotalDebt(debtSum);
         setNewClientsCount(newClients);
 
-        // Obtener pagos e ingresos por concepto del mes seleccionado
-        const pagosSnapshot = await getDocs(collection(db, "payments"));
+        // 🔥 FUNCIÓN CORREGIDA: Obtener pagos de TODAS las colecciones
         let ingresos = 0;
         const conceptos = {};
 
-        pagosSnapshot.forEach((doc) => {
-          const data = doc.data();
-          const paymentDate = data.createdAt || data.fecha;
+        // Función helper para procesar pagos de cualquier colección
+        const procesarPagos = (snapshot, coleccionNombre) => {
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            const paymentDate = data.createdAt || data.fecha;
 
-          // Filtrar pagos del mes seleccionado
-          if (
-            isDateInSelectedMonth(paymentDate, selectedDate) &&
-            data.type !== "debt" &&
-            !isNaN(parseFloat(data.monto))
-          ) {
-            const monto = parseFloat(data.monto);
-            ingresos += monto;
+            // Filtrar pagos del mes seleccionado
+            if (
+              isDateInSelectedMonth(paymentDate, selectedDate) &&
+              data.type !== "debt" &&
+              !isNaN(parseFloat(data.monto))
+            ) {
+              const monto = parseFloat(data.monto);
+              ingresos += monto;
 
-            const concepto = data.concepto || "Otro";
-            conceptos[concepto] = (conceptos[concepto] || 0) + monto;
-          }
-        });
+              const concepto = data.concepto || "Otro";
+              conceptos[concepto] = (conceptos[concepto] || 0) + monto;
+            }
+          });
+        };
+
+        // Cargar pagos de TODAS las colecciones
+        const [paymentsSnap, patientPaymentsSnap, quiropraxiaPaymentsSnap] =
+          await Promise.all([
+            getDocs(collection(db, "payments")), // Pagos de gimnasio
+            getDocs(collection(db, "patientPayments")), // Pagos de kinesio
+            getDocs(collection(db, "quiropraxiaPayments")), // Pagos de quiropraxia
+          ]);
+
+        // Procesar pagos de cada colección
+        procesarPagos(paymentsSnap, "payments");
+        procesarPagos(patientPaymentsSnap, "patientPayments");
+        procesarPagos(quiropraxiaPaymentsSnap, "quiropraxiaPayments");
 
         setTotalIncome(ingresos);
         setIncomeByConcept(conceptos);
+
+        console.log(`📊 Reporte del mes ${getSelectedMonthName()}:`);
+        console.log(`💰 Ingresos totales: $${ingresos.toLocaleString()}`);
+        console.log(`📝 Conceptos:`, conceptos);
       } catch (error) {
         console.error("Error al obtener reportes:", error);
       }
@@ -218,6 +237,7 @@ const Report = () => {
             <p>Fecha de generación: ${new Date().toLocaleDateString(
               "es-AR"
             )}</p>
+            <p><em>Incluye ingresos de Gimnasio, Kinesio y Quiropraxia</em></p>
           </div>
 
           <div class="section">
@@ -341,7 +361,9 @@ const Report = () => {
       >
         <div>
           <h1 className="report-title">Reportes</h1>
-          <p className="report-description">Visualiza estadísticas mensuales</p>
+          <p className="report-description">
+            Visualiza estadísticas mensuales de todas las áreas
+          </p>
         </div>
 
         {/* Botón de impresión */}
@@ -376,6 +398,9 @@ const Report = () => {
         <div className="report-card">
           <h3>Ingresos Totales</h3>
           <p>${totalIncome.toLocaleString("es-AR")}</p>
+          <small style={{ color: "#666" }}>
+            Gimnasio + Kinesio + Quiropraxia
+          </small>
         </div>
         <div className="report-card">
           <h3>Nuevos Alumnos</h3>
@@ -395,7 +420,9 @@ const Report = () => {
 
       <div className="report-detail">
         <h2>Detalle de Ingresos</h2>
-        <p className="detail-subtitle">Desglose de ingresos por concepto</p>
+        <p className="detail-subtitle">
+          Desglose de ingresos por concepto (todas las áreas)
+        </p>
 
         <div className="report-table-wrapper">
           <table className="report-table">
