@@ -34,8 +34,7 @@ import ForgotPassword from "../components/pages/forgotPassword/ForgotPassword.js
 import Layout from "../components/layout/Layout.jsx";
 import ProtectedAdmin from "./ProtectedAdmin.jsx";
 import ProtectedReport from "./ProtectedReport.jsx";
-import Report from "../components/pages/report/Report.jsx"; // Asegúrate de que la ruta sea correcta
-
+import Report from "../components/pages/report/Report.jsx";
 const AppRouter = () => {
   return (
     <Routes>
