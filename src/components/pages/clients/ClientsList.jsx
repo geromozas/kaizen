@@ -20,6 +20,10 @@
 //   AccordionSummary,
 //   AccordionDetails,
 //   Grid,
+//   Divider,
+//   RadioGroup,
+//   FormControlLabel,
+//   Radio,
 // } from "@mui/material";
 // import DeleteIcon from "@mui/icons-material/Delete";
 // import EditIcon from "@mui/icons-material/Edit";
@@ -29,6 +33,7 @@
 // import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 // import PersonIcon from "@mui/icons-material/Person";
 // import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+// import MonthlyBillingManager from "./MonthlyBillingManager";
 
 // import {
 //   deleteDoc,
@@ -99,6 +104,11 @@
 //   const [loadingSchedules, setLoadingSchedules] = useState(false);
 //   const [avisoSaldo, setAvisoSaldo] = useState("");
 
+//   // Estados para pago adelantado
+//   const [tipoPago, setTipoPago] = useState("normal"); // "normal" o "adelantado"
+//   const [mesesAdelantados, setMesesAdelantados] = useState(1);
+//   const [fechaInicioAdelantado, setFechaInicioAdelantado] = useState("");
+
 //   const [nuevoPago, setNuevoPago] = useState({
 //     concepto: "",
 //     metodo: "",
@@ -124,6 +134,9 @@
 //   const handleClosePaymentModal = () => {
 //     setOpenPaymentModal(false);
 //     setClientSelected(null);
+//     setTipoPago("normal");
+//     setMesesAdelantados(1);
+//     setFechaInicioAdelantado("");
 //     setNuevoPago({
 //       concepto: "",
 //       metodo: "",
@@ -143,6 +156,31 @@
 //     setOpenForm(true);
 //   };
 
+//   // Función para obtener el precio de la actividad del cliente
+//   const getPrecioCuotaCliente = (client) => {
+//     const actividad = activities.find((a) => a.label === client.actividad);
+//     if (!actividad) return 0;
+//     return Math.round((actividad.valor * (client.proporcion || 1)) / 100) * 100;
+//   };
+
+//   // Función para calcular fecha de inicio del pago adelantado
+//   const calcularFechaInicioAdelantado = (client) => {
+//     const hoy = new Date();
+//     const ultimoMesFacturado = client.ultimoMesFacturado;
+
+//     if (ultimoMesFacturado) {
+//       // Si tiene mes facturado, el próximo mes comienza después
+//       const [anio, mes] = ultimoMesFacturado.split("-").map(Number);
+//       // Sumar 1 al mes para obtener el siguiente
+//       const siguienteMes = new Date(anio, mes, 1); // mes ya está en formato 1-12, Date lo convierte a 0-11
+//       return siguienteMes.toISOString().split("T")[0];
+//     } else {
+//       // Si no tiene mes facturado, usar el mes actual
+//       const mesActual = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+//       return mesActual.toISOString().split("T")[0];
+//     }
+//   };
+
 //   const handleOpenPaymentModal = (client) => {
 //     setClientSelected(client);
 
@@ -150,7 +188,6 @@
 //     if (client.saldoFavor > 0) {
 //       aviso = `⚠️ Saldo a favor: $${client.saldoFavor.toLocaleString("es-AR")}`;
 //     } else if (client.debt > 0) {
-//       // Mostrar si tiene deuda anterior
 //       if (client.deudaAnterior && client.deudaAnterior > 0) {
 //         aviso = `💰 Deuda total: $${client.debt.toLocaleString(
 //           "es-AR"
@@ -168,6 +205,10 @@
 //     const conceptoPrecargado = client.actividad
 //       ? `${client.actividad}`
 //       : "Pago de clase";
+
+//     // Calcular fecha de inicio para pago adelantado
+//     const fechaInicio = calcularFechaInicioAdelantado(client);
+//     setFechaInicioAdelantado(fechaInicio);
 
 //     setNuevoPago({
 //       concepto: conceptoPrecargado,
@@ -236,6 +277,7 @@
 //     setIsChange(true);
 //   };
 
+//   // Efecto para calcular avisos según el tipo de pago
 //   useEffect(() => {
 //     if (clientSelected && nuevoPago.monto) {
 //       const monto = parseInt(nuevoPago.monto);
@@ -245,58 +287,91 @@
 //       const saldoFavorActual = clientSelected.saldoFavor || 0;
 //       const deudaActual = clientSelected.debt || 0;
 //       const deudaAnterior = clientSelected.deudaAnterior || 0;
+//       const precioCuota = getPrecioCuotaCliente(clientSelected);
 
-//       if (saldoFavorActual > 0) {
-//         const nuevoSaldoFavor = saldoFavorActual + monto;
-//         avisoDetallado = `💚 Nuevo saldo: $${nuevoSaldoFavor.toLocaleString(
-//           "es-AR"
-//         )}`;
-//       } else if (deudaActual > 0) {
-//         if (monto > deudaActual) {
-//           const saldoFavor = monto - deudaActual;
-//           avisoDetallado = `🎉 Cubre deuda completa + $${saldoFavor.toLocaleString(
-//             "es-AR"
-//           )} a favor`;
-//         } else if (monto === deudaActual) {
-//           avisoDetallado = `✅ Cubre exactamente la deuda`;
-//         } else {
-//           const deudaRestante = deudaActual - monto;
+//       if (tipoPago === "adelantado") {
+//         // Cálculo para pago adelantado
+//         const montoTotal = precioCuota * mesesAdelantados;
+//         let montoAPagar = montoTotal;
 
-//           // Si hay deuda anterior, mostrar cómo se distribuye el pago
-//           if (deudaAnterior > 0) {
-//             if (monto >= deudaAnterior) {
-//               const cubrioAnterior = true;
-//               const sobrante = monto - deudaAnterior;
-//               const cuotaActual = deudaActual - deudaAnterior;
-//               const nuevaCuotaActual = cuotaActual - sobrante;
-//               avisoDetallado = `✅ Cubre $${deudaAnterior.toLocaleString(
-//                 "es-AR"
-//               )} de deuda anterior + $${sobrante.toLocaleString(
-//                 "es-AR"
-//               )} de cuota actual. Restante: $${deudaRestante.toLocaleString(
-//                 "es-AR"
-//               )}`;
-//             } else {
-//               const nuevaDeudaAnterior = deudaAnterior - monto;
-//               avisoDetallado = `⚠️ Se aplica a deuda anterior. Nueva deuda anterior: $${nuevaDeudaAnterior.toLocaleString(
-//                 "es-AR"
-//               )}. Restante total: $${deudaRestante.toLocaleString("es-AR")}`;
-//             }
-//           } else {
-//             avisoDetallado = `⚠️ Restante: $${deudaRestante.toLocaleString(
+//         // Si tiene saldo a favor, restarlo del monto total
+//         if (saldoFavorActual > 0) {
+//           if (saldoFavorActual >= montoTotal) {
+//             avisoDetallado = `✅ El saldo a favor ($${saldoFavorActual.toLocaleString(
 //               "es-AR"
-//             )}`;
+//             )}) cubre los ${mesesAdelantados} mes(es). Sobrante: $${(
+//               saldoFavorActual - montoTotal
+//             ).toLocaleString("es-AR")}`;
+//           } else {
+//             montoAPagar = montoTotal - saldoFavorActual;
+//             avisoDetallado = `💰 Total: $${montoTotal.toLocaleString(
+//               "es-AR"
+//             )} - Saldo a favor: $${saldoFavorActual.toLocaleString(
+//               "es-AR"
+//             )} = A pagar: $${montoAPagar.toLocaleString("es-AR")}`;
 //           }
+//         } else {
+//           avisoDetallado = `📅 ${mesesAdelantados} mes(es) x $${precioCuota.toLocaleString(
+//             "es-AR"
+//           )} = $${montoTotal.toLocaleString("es-AR")}`;
+//         }
+
+//         // Actualizar el monto sugerido
+//         if (monto !== montoAPagar && montoAPagar > 0) {
+//           avisoDetallado += `\n💡 Monto sugerido: $${montoAPagar.toLocaleString(
+//             "es-AR"
+//           )}`;
 //         }
 //       } else {
-//         avisoDetallado = `💚 Generará saldo a favor de $${monto.toLocaleString(
-//           "es-AR"
-//         )}`;
+//         // Cálculo normal (código original)
+//         if (saldoFavorActual > 0) {
+//           const nuevoSaldoFavor = saldoFavorActual + monto;
+//           avisoDetallado = `💚 Nuevo saldo: $${nuevoSaldoFavor.toLocaleString(
+//             "es-AR"
+//           )}`;
+//         } else if (deudaActual > 0) {
+//           if (monto > deudaActual) {
+//             const saldoFavor = monto - deudaActual;
+//             avisoDetallado = `🎉 Cubre deuda completa + $${saldoFavor.toLocaleString(
+//               "es-AR"
+//             )} a favor`;
+//           } else if (monto === deudaActual) {
+//             avisoDetallado = `✅ Cubre exactamente la deuda`;
+//           } else {
+//             const deudaRestante = deudaActual - monto;
+
+//             if (deudaAnterior > 0) {
+//               if (monto >= deudaAnterior) {
+//                 const sobrante = monto - deudaAnterior;
+//                 avisoDetallado = `✅ Cubre $${deudaAnterior.toLocaleString(
+//                   "es-AR"
+//                 )} de deuda anterior + $${sobrante.toLocaleString(
+//                   "es-AR"
+//                 )} de cuota actual. Restante: $${deudaRestante.toLocaleString(
+//                   "es-AR"
+//                 )}`;
+//               } else {
+//                 const nuevaDeudaAnterior = deudaAnterior - monto;
+//                 avisoDetallado = `⚠️ Se aplica a deuda anterior. Nueva deuda anterior: $${nuevaDeudaAnterior.toLocaleString(
+//                   "es-AR"
+//                 )}. Restante total: $${deudaRestante.toLocaleString("es-AR")}`;
+//               }
+//             } else {
+//               avisoDetallado = `⚠️ Restante: $${deudaRestante.toLocaleString(
+//                 "es-AR"
+//               )}`;
+//             }
+//           }
+//         } else {
+//           avisoDetallado = `💚 Generará saldo a favor de $${monto.toLocaleString(
+//             "es-AR"
+//           )}`;
+//         }
 //       }
 
 //       setAvisoSaldo(avisoDetallado);
 //     }
-//   }, [nuevoPago.monto, clientSelected]);
+//   }, [nuevoPago.monto, clientSelected, tipoPago, mesesAdelantados]);
 
 //   const handleRegistrarPago = async () => {
 //     if (!clientSelected || !nuevoPago.monto || !nuevoPago.metodo) {
@@ -313,96 +388,208 @@
 //     const mesPago = `${anio}-${String(mes).padStart(2, "0")}`;
 //     const fechaPago = new Date(anio, mes - 1, dia);
 
-//     const pagoFinal = {
-//       fecha: nuevoPago.fecha,
-//       hora: nuevoPago.hora,
-//       concepto: nuevoPago.concepto || "Pago de clase",
-//       metodo: nuevoPago.metodo,
-//       monto: montoPagado,
-//       mes: mesPago,
-//       createdAt: Timestamp.fromDate(fechaPago),
-//       alumno: {
-//         name: clientSelected.name,
-//         lastName: clientSelected.lastName,
-//         dni: clientSelected.dni || "Sin DNI",
-//         id: clientSelected.id,
-//       },
-//     };
+//     if (tipoPago === "adelantado") {
+//       // Lógica para pago adelantado
+//       const precioCuota = getPrecioCuotaCliente(clientSelected);
+//       const montoTotalNecesario = precioCuota * mesesAdelantados;
+//       const saldoFavorActual = clientSelected.saldoFavor || 0;
 
-//     const deudaActual = clientSelected.debt || 0;
-//     const saldoFavorActual = clientSelected.saldoFavor || 0;
-//     const deudaAnterior = clientSelected.deudaAnterior || 0;
+//       let montoFaltante = montoTotalNecesario - saldoFavorActual;
+//       if (montoFaltante < 0) montoFaltante = 0;
 
-//     let nuevaDeuda = 0;
-//     let nuevoSaldoFavor = 0;
-//     let nuevoEstado = "Al día";
-//     let nuevaDeudaAnterior = deudaAnterior;
+//       // Validar que el monto sea suficiente (si no hay saldo a favor que lo cubra)
+//       if (
+//         saldoFavorActual < montoTotalNecesario &&
+//         montoPagado < montoFaltante
+//       ) {
+//         Swal.fire({
+//           icon: "warning",
+//           title: "Monto insuficiente",
+//           text: `Para ${mesesAdelantados} mes(es) necesitas pagar al menos $${montoFaltante.toLocaleString(
+//             "es-AR"
+//           )} (considerando tu saldo a favor de $${saldoFavorActual.toLocaleString(
+//             "es-AR"
+//           )})`,
+//         });
+//         return;
+//       }
 
-//     if (saldoFavorActual > 0) {
-//       nuevoSaldoFavor = saldoFavorActual + montoPagado;
-//       nuevoEstado = "Al día";
-//     } else if (deudaActual > 0) {
-//       if (montoPagado >= deudaActual) {
-//         // Pago cubre toda la deuda
-//         nuevoSaldoFavor = montoPagado - deudaActual;
+//       // Calcular nuevo saldo y meses pagados
+//       let saldoTotal = saldoFavorActual + montoPagado;
+//       let nuevoSaldoFavor = 0;
+
+//       if (saldoTotal >= montoTotalNecesario) {
+//         nuevoSaldoFavor = saldoTotal - montoTotalNecesario;
+//       }
+
+//       // Calcular el último mes facturado
+//       const fechaInicio = new Date(fechaInicioAdelantado);
+//       const ultimoMesPagado = new Date(
+//         fechaInicio.getFullYear(),
+//         fechaInicio.getMonth() + mesesAdelantados - 1,
+//         1
+//       );
+//       const ultimoMesFacturado = `${ultimoMesPagado.getFullYear()}-${String(
+//         ultimoMesPagado.getMonth() + 1
+//       ).padStart(2, "0")}`;
+
+//       // Registrar el pago
+//       const pagoFinal = {
+//         fecha: nuevoPago.fecha,
+//         hora: nuevoPago.hora,
+//         concepto: `${nuevoPago.concepto} - ${mesesAdelantados} mes(es) adelantado(s)`,
+//         metodo: nuevoPago.metodo,
+//         monto: montoPagado,
+//         mes: mesPago,
+//         mesesPagados: mesesAdelantados,
+//         fechaInicioCobertura: fechaInicioAdelantado,
+//         fechaFinCobertura: ultimoMesFacturado,
+//         tipoPago: "adelantado",
+//         createdAt: Timestamp.fromDate(fechaPago),
+//         alumno: {
+//           name: clientSelected.name,
+//           lastName: clientSelected.lastName,
+//           dni: clientSelected.dni || "Sin DNI",
+//           id: clientSelected.id,
+//         },
+//       };
+
+//       const updateData = {
+//         ultimoPago: nuevoPago.fecha,
+//         debt: 0,
+//         deudaAnterior: 0,
+//         saldoFavor: nuevoSaldoFavor,
+//         estado: "Al día",
+//         ultimoMesFacturado: ultimoMesFacturado,
+//         mesesPagadosAdelantado: mesesAdelantados,
+//       };
+
+//       try {
+//         await addDoc(collection(db, "payments"), pagoFinal);
+//         const clientRef = doc(db, "clients", clientSelected.id);
+//         await updateDoc(clientRef, updateData);
+
+//         handleClosePaymentModal();
+//         setIsChange(true);
+
+//         Swal.fire({
+//           icon: "success",
+//           title: "Pago adelantado registrado",
+//           html: `
+//             <p>✅ ${mesesAdelantados} mes(es) pagado(s)</p>
+//             <p>📅 Cobertura hasta: ${new Date(
+//               ultimoMesFacturado + "-01"
+//             ).toLocaleDateString("es-AR", {
+//               year: "numeric",
+//               month: "long",
+//             })}</p>
+//             ${
+//               nuevoSaldoFavor > 0
+//                 ? `<p>💚 Saldo a favor: $${nuevoSaldoFavor.toLocaleString(
+//                     "es-AR"
+//                   )}</p>`
+//                 : ""
+//             }
+//           `,
+//           timer: 3000,
+//           showConfirmButton: false,
+//         });
+//       } catch (error) {
+//         console.error("Error al registrar pago adelantado:", error);
+//         Swal.fire({
+//           icon: "error",
+//           title: "Error",
+//           text: "Hubo un error al registrar el pago adelantado",
+//         });
+//       }
+//     } else {
+//       // Lógica de pago normal (código original)
+//       const pagoFinal = {
+//         fecha: nuevoPago.fecha,
+//         hora: nuevoPago.hora,
+//         concepto: nuevoPago.concepto || "Pago de clase",
+//         metodo: nuevoPago.metodo,
+//         monto: montoPagado,
+//         mes: mesPago,
+//         tipoPago: "normal",
+//         createdAt: Timestamp.fromDate(fechaPago),
+//         alumno: {
+//           name: clientSelected.name,
+//           lastName: clientSelected.lastName,
+//           dni: clientSelected.dni || "Sin DNI",
+//           id: clientSelected.id,
+//         },
+//       };
+
+//       const deudaActual = clientSelected.debt || 0;
+//       const saldoFavorActual = clientSelected.saldoFavor || 0;
+//       const deudaAnterior = clientSelected.deudaAnterior || 0;
+
+//       let nuevaDeuda = 0;
+//       let nuevoSaldoFavor = 0;
+//       let nuevoEstado = "Al día";
+//       let nuevaDeudaAnterior = deudaAnterior;
+
+//       if (saldoFavorActual > 0) {
+//         nuevoSaldoFavor = saldoFavorActual + montoPagado;
+//         nuevoEstado = "Al día";
+//       } else if (deudaActual > 0) {
+//         if (montoPagado >= deudaActual) {
+//           nuevoSaldoFavor = montoPagado - deudaActual;
+//           nuevaDeuda = 0;
+//           nuevaDeudaAnterior = 0;
+//           nuevoEstado = "Al día";
+//         } else {
+//           nuevaDeuda = deudaActual - montoPagado;
+//           nuevoSaldoFavor = 0;
+//           nuevoEstado = "Deudor";
+
+//           if (deudaAnterior > 0) {
+//             if (montoPagado >= deudaAnterior) {
+//               nuevaDeudaAnterior = 0;
+//             } else {
+//               nuevaDeudaAnterior = deudaAnterior - montoPagado;
+//             }
+//           }
+//         }
+//       } else {
+//         nuevoSaldoFavor = montoPagado;
 //         nuevaDeuda = 0;
 //         nuevaDeudaAnterior = 0;
 //         nuevoEstado = "Al día";
-//       } else {
-//         // Pago parcial
-//         nuevaDeuda = deudaActual - montoPagado;
-//         nuevoSaldoFavor = 0;
-//         nuevoEstado = "Deudor";
-
-//         // Si hay deuda anterior, aplicar el pago primero allí
-//         if (deudaAnterior > 0) {
-//           if (montoPagado >= deudaAnterior) {
-//             // El pago cubre toda la deuda anterior
-//             nuevaDeudaAnterior = 0;
-//           } else {
-//             // El pago solo cubre parte de la deuda anterior
-//             nuevaDeudaAnterior = deudaAnterior - montoPagado;
-//           }
-//         }
 //       }
-//     } else {
-//       // No hay deuda, genera saldo a favor
-//       nuevoSaldoFavor = montoPagado;
-//       nuevaDeuda = 0;
-//       nuevaDeudaAnterior = 0;
-//       nuevoEstado = "Al día";
-//     }
 
-//     const updateData = {
-//       ultimoPago: nuevoPago.fecha,
-//       debt: nuevaDeuda,
-//       deudaAnterior: nuevaDeudaAnterior,
-//       saldoFavor: nuevoSaldoFavor,
-//       estado: nuevoEstado,
-//     };
+//       const updateData = {
+//         ultimoPago: nuevoPago.fecha,
+//         debt: nuevaDeuda,
+//         deudaAnterior: nuevaDeudaAnterior,
+//         saldoFavor: nuevoSaldoFavor,
+//         estado: nuevoEstado,
+//       };
 
-//     try {
-//       await addDoc(collection(db, "payments"), pagoFinal);
-//       const clientRef = doc(db, "clients", clientSelected.id);
-//       await updateDoc(clientRef, updateData);
+//       try {
+//         await addDoc(collection(db, "payments"), pagoFinal);
+//         const clientRef = doc(db, "clients", clientSelected.id);
+//         await updateDoc(clientRef, updateData);
 
-//       handleClosePaymentModal();
-//       setIsChange(true);
+//         handleClosePaymentModal();
+//         setIsChange(true);
 
-//       Swal.fire({
-//         icon: "success",
-//         title: "Pago registrado",
-//         text: "El pago fue registrado exitosamente ✅",
-//         timer: 2000,
-//         showConfirmButton: false,
-//       });
-//     } catch (error) {
-//       console.error("Error al registrar pago:", error);
-//       Swal.fire({
-//         icon: "error",
-//         title: "Error",
-//         text: "Hubo un error al registrar el pago",
-//       });
+//         Swal.fire({
+//           icon: "success",
+//           title: "Pago registrado",
+//           text: "El pago fue registrado exitosamente ✅",
+//           timer: 2000,
+//           showConfirmButton: false,
+//         });
+//       } catch (error) {
+//         console.error("Error al registrar pago:", error);
+//         Swal.fire({
+//           icon: "error",
+//           title: "Error",
+//           text: "Hubo un error al registrar el pago",
+//         });
+//       }
 //     }
 //   };
 
@@ -683,12 +870,121 @@
 //             </Typography>
 //           )}
 
+//           {/* Selector de tipo de pago */}
+//           <Box sx={{ mb: 2, p: 1.5, bgcolor: "grey.50", borderRadius: 1 }}>
+//             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: "bold" }}>
+//               Tipo de Pago
+//             </Typography>
+//             <RadioGroup
+//               value={tipoPago}
+//               onChange={(e) => setTipoPago(e.target.value)}
+//               row
+//             >
+//               <FormControlLabel
+//                 value="normal"
+//                 control={<Radio size="small" />}
+//                 label="Pago Normal"
+//               />
+//               <FormControlLabel
+//                 value="adelantado"
+//                 control={<Radio size="small" />}
+//                 label="Pago Adelantado"
+//               />
+//             </RadioGroup>
+//           </Box>
+
+//           {/* Configuración de pago adelantado */}
+//           {tipoPago === "adelantado" && clientSelected && (
+//             <Box sx={{ mb: 2, p: 2, bgcolor: "#e3f2fd", borderRadius: 1 }}>
+//               <Typography
+//                 variant="subtitle2"
+//                 sx={{ mb: 1.5, fontWeight: "bold" }}
+//               >
+//                 Configuración de Pago Adelantado
+//               </Typography>
+
+//               <Grid container spacing={2}>
+//                 <Grid item xs={6}>
+//                   <TextField
+//                     label="Cantidad de meses"
+//                     type="number"
+//                     size="small"
+//                     fullWidth
+//                     value={mesesAdelantados}
+//                     onChange={(e) => {
+//                       const val = parseInt(e.target.value);
+//                       if (val > 0 && val <= 12) {
+//                         setMesesAdelantados(val);
+//                       }
+//                     }}
+//                     inputProps={{ min: 1, max: 12 }}
+//                   />
+//                 </Grid>
+//                 <Grid item xs={6}>
+//                   <TextField
+//                     label="Inicio cobertura"
+//                     type="date"
+//                     size="small"
+//                     fullWidth
+//                     value={fechaInicioAdelantado}
+//                     onChange={(e) => setFechaInicioAdelantado(e.target.value)}
+//                     InputLabelProps={{
+//                       shrink: true,
+//                     }}
+//                   />
+//                 </Grid>
+//               </Grid>
+
+//               <Box sx={{ mt: 1.5, p: 1, bgcolor: "white", borderRadius: 1 }}>
+//                 <Typography variant="caption" display="block">
+//                   <strong>Precio por mes:</strong> $
+//                   {getPrecioCuotaCliente(clientSelected).toLocaleString(
+//                     "es-AR"
+//                   )}
+//                 </Typography>
+//                 <Typography variant="caption" display="block">
+//                   <strong>Total a pagar:</strong> $
+//                   {(
+//                     getPrecioCuotaCliente(clientSelected) * mesesAdelantados
+//                   ).toLocaleString("es-AR")}
+//                 </Typography>
+//                 {clientSelected.saldoFavor > 0 && (
+//                   <>
+//                     <Typography
+//                       variant="caption"
+//                       display="block"
+//                       color="success.main"
+//                     >
+//                       <strong>Saldo a favor:</strong> -$
+//                       {clientSelected.saldoFavor.toLocaleString("es-AR")}
+//                     </Typography>
+//                     <Divider sx={{ my: 0.5 }} />
+//                     <Typography
+//                       variant="caption"
+//                       display="block"
+//                       sx={{ fontWeight: "bold" }}
+//                     >
+//                       <strong>Monto final:</strong> $
+//                       {Math.max(
+//                         0,
+//                         getPrecioCuotaCliente(clientSelected) *
+//                           mesesAdelantados -
+//                           clientSelected.saldoFavor
+//                       ).toLocaleString("es-AR")}
+//                     </Typography>
+//                   </>
+//                 )}
+//               </Box>
+//             </Box>
+//           )}
+
 //           {avisoSaldo && (
 //             <Alert
 //               severity={
 //                 avisoSaldo.includes("favor") ||
 //                 avisoSaldo.includes("exactamente") ||
-//                 avisoSaldo.includes("completa")
+//                 avisoSaldo.includes("completa") ||
+//                 avisoSaldo.includes("cubre")
 //                   ? "success"
 //                   : avisoSaldo.includes("Restante") ||
 //                     avisoSaldo.includes("anterior")
@@ -783,7 +1079,7 @@
 //               size="small"
 //               disabled={!nuevoPago.monto || !nuevoPago.metodo}
 //             >
-//               Registrar
+//               {tipoPago === "adelantado" ? "Pagar Adelantado" : "Registrar"}
 //             </Button>
 //           </Box>
 //         </Box>
@@ -879,7 +1175,6 @@
 //                       </Typography>
 //                     </Grid>
 
-//                     {/* Mostrar deuda anterior si existe */}
 //                     {(clientSelected.deudaAnterior || 0) > 0 && (
 //                       <Grid item xs={12}>
 //                         <Box
@@ -935,11 +1230,38 @@
 //                     </Grid>
 
 //                     {clientSelected.ultimoMesFacturado && (
-//                       <Grid item xs={6}>
+//                       <Grid item xs={12}>
 //                         <Typography variant="body2">
 //                           <strong>Último mes facturado:</strong>{" "}
-//                           {clientSelected.ultimoMesFacturado}
+//                           {new Date(
+//                             clientSelected.ultimoMesFacturado + "-01"
+//                           ).toLocaleDateString("es-AR", {
+//                             year: "numeric",
+//                             month: "long",
+//                           })}
 //                         </Typography>
+//                       </Grid>
+//                     )}
+
+//                     {clientSelected.mesesPagadosAdelantado && (
+//                       <Grid item xs={12}>
+//                         <Box
+//                           sx={{
+//                             mt: 1,
+//                             p: 1.5,
+//                             bgcolor: "#e8f5e9",
+//                             borderRadius: 1,
+//                             border: "1px solid #4caf50",
+//                           }}
+//                         >
+//                           <Typography
+//                             variant="body2"
+//                             sx={{ fontWeight: "bold", color: "#2e7d32" }}
+//                           >
+//                             ✅ Pagado adelantado:{" "}
+//                             {clientSelected.mesesPagadosAdelantado} mes(es)
+//                           </Typography>
+//                         </Box>
 //                       </Grid>
 //                     )}
 //                   </Grid>
@@ -1145,6 +1467,7 @@ import { ActivityPricesManager } from "../activities/ActivityPricesManager";
 import { Timestamp } from "firebase/firestore";
 import Swal from "sweetalert2";
 import ActivityStats from "../activities/ActivityStats";
+import MonthlyBillingManager from "./MonthlyBillingManager";
 
 const modalStyle = {
   position: "absolute",
@@ -1813,6 +2136,10 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                 </MenuItem>
               ))}
           </Select>
+          <MonthlyBillingManager
+            activities={activities}
+            setIsChange={setIsChange}
+          />
           <Button
             variant="outlined"
             startIcon={<SettingsIcon />}
