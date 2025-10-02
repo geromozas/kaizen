@@ -12,8 +12,12 @@ import {
   ListItem,
   ListItemText,
   Chip,
+  Checkbox,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import SearchIcon from "@mui/icons-material/Search";
 import { useState } from "react";
 import { db } from "../../../firebaseConfig";
 import {
@@ -30,15 +34,15 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
   const [open, setOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [selectedClients, setSelectedClients] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Función para calcular la cuota del cliente
   const calcularCuotaCliente = (client, activities) => {
     const actividad = activities.find((a) => a.label === client.actividad);
     if (!actividad) return 0;
     return Math.round((actividad.valor * (client.proporcion || 1)) / 100) * 100;
   };
 
-  // Función para obtener el mes/año actual
   const getMesActual = () => {
     const now = new Date();
     const mes = now.getMonth() + 1;
@@ -46,13 +50,11 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
     return `${anio}-${String(mes).padStart(2, "0")}`;
   };
 
-  // Función para verificar si ya se facturó este mes
   const yaSeFacturoEsteMes = (client) => {
     const mesActual = getMesActual();
     return client.ultimoMesFacturado === mesActual;
   };
 
-  // Preview de clientes a facturar
   const generarPreview = async () => {
     setIsProcessing(true);
     try {
@@ -61,11 +63,11 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
 
       const clientesAFacturar = [];
       const clientesExcluidos = [];
+      const selected = {};
 
       clientsSnap.docs.forEach((docSnap) => {
         const client = { id: docSnap.id, ...docSnap.data() };
 
-        // Excluir si está inactivo
         if (client.estado === "Inactivo") {
           clientesExcluidos.push({
             ...client,
@@ -74,7 +76,6 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
           return;
         }
 
-        // Excluir si ya se facturó este mes
         if (yaSeFacturoEsteMes(client)) {
           clientesExcluidos.push({
             ...client,
@@ -83,7 +84,6 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
           return;
         }
 
-        // Excluir si no tiene actividad asignada
         if (!client.actividad) {
           clientesExcluidos.push({
             ...client,
@@ -98,8 +98,11 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
           ...client,
           cuotaAFacturar: cuota,
         });
+
+        selected[client.id] = true; // Por defecto todos seleccionados
       });
 
+      setSelectedClients(selected);
       setPreviewData({
         clientesAFacturar,
         clientesExcluidos,
@@ -129,26 +132,61 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
   const handleClose = () => {
     setOpen(false);
     setPreviewData(null);
+    setSelectedClients({});
+    setSearchTerm("");
   };
 
-  // Función principal de facturación mensual
+  const toggleClientSelection = (clientId) => {
+    setSelectedClients((prev) => ({
+      ...prev,
+      [clientId]: !prev[clientId],
+    }));
+  };
+
+  const toggleSelectAll = () => {
+    const allSelected = Object.values(selectedClients).every((v) => v);
+    const newSelection = {};
+    previewData.clientesAFacturar.forEach((client) => {
+      newSelection[client.id] = !allSelected;
+    });
+    setSelectedClients(newSelection);
+  };
+
+  const getClientesSeleccionados = () => {
+    if (!previewData) return [];
+    return previewData.clientesAFacturar.filter(
+      (client) => selectedClients[client.id]
+    );
+  };
+
+  const getTotalSeleccionados = () => {
+    return getClientesSeleccionados().reduce(
+      (sum, c) => sum + c.cuotaAFacturar,
+      0
+    );
+  };
+
   const ejecutarFacturacionMensual = async () => {
-    if (!previewData || previewData.clientesAFacturar.length === 0) {
+    const clientesSeleccionados = getClientesSeleccionados();
+
+    if (clientesSeleccionados.length === 0) {
       Swal.fire({
         icon: "warning",
-        title: "Sin clientes para facturar",
-        text: "No hay clientes activos pendientes de facturación",
+        title: "Sin clientes seleccionados",
+        text: "Debes seleccionar al menos un cliente para facturar",
       });
       return;
     }
+
+    const totalSeleccionado = getTotalSeleccionados();
 
     const result = await Swal.fire({
       title: "¿Confirmar facturación?",
       html: `
         <p>Se facturarán <strong>${
-          previewData.clientesAFacturar.length
+          clientesSeleccionados.length
         }</strong> clientes</p>
-        <p>Total: <strong>$${previewData.totalAFacturar.toLocaleString(
+        <p>Total: <strong>$${totalSeleccionado.toLocaleString(
           "es-AR"
         )}</strong></p>
         <p>Mes: <strong>${(() => {
@@ -179,18 +217,16 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
       let procesados = 0;
       let errores = 0;
 
-      for (const client of previewData.clientesAFacturar) {
+      for (const client of clientesSeleccionados) {
         try {
           const clientRef = doc(db, "clients", client.id);
           const cuota = client.cuotaAFacturar;
 
-          // Calcular nueva deuda
           let nuevaDeuda = client.debt || 0;
           let deudaAnterior = client.deudaAnterior || 0;
           let saldoFavor = client.saldoFavor || 0;
 
           if (saldoFavor > 0) {
-            // Si tiene saldo a favor, descontarlo de la nueva cuota
             if (saldoFavor >= cuota) {
               saldoFavor -= cuota;
               nuevaDeuda = 0;
@@ -199,14 +235,12 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
               saldoFavor = 0;
             }
           } else {
-            // Si tenía deuda anterior, pasarla a deudaAnterior
             if (nuevaDeuda > 0) {
               deudaAnterior += nuevaDeuda;
             }
             nuevaDeuda = cuota;
           }
 
-          // Determinar nuevo estado
           let nuevoEstado;
           if (saldoFavor > 0) {
             nuevoEstado = "Al día";
@@ -216,7 +250,6 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
             nuevoEstado = "Al día";
           }
 
-          // Actualizar cliente
           const updateData = {
             debt: nuevaDeuda,
             deudaAnterior: deudaAnterior,
@@ -234,21 +267,18 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
         }
       }
 
-      // Ejecutar el batch
       await batch.commit();
 
-      // Actualizar la vista
       setIsChange(true);
       handleClose();
 
-      // Mostrar resultado
       Swal.fire({
         icon: "success",
         title: "Facturación completada",
         html: `
           <p>✅ Clientes facturados: <strong>${procesados}</strong></p>
           ${errores > 0 ? `<p>⚠️ Errores: <strong>${errores}</strong></p>` : ""}
-          <p>Total facturado: <strong>$${previewData.totalAFacturar.toLocaleString(
+          <p>Total facturado: <strong>$${totalSeleccionado.toLocaleString(
             "es-AR"
           )}</strong></p>
         `,
@@ -265,6 +295,14 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
       setIsProcessing(false);
     }
   };
+
+  const filteredClientes = previewData
+    ? previewData.clientesAFacturar.filter((client) =>
+        `${client.name} ${client.lastName}`
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())
+      )
+    : [];
 
   return (
     <>
@@ -306,22 +344,46 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
 
               {previewData.clientesAFacturar.length > 0 && (
                 <Box sx={{ mb: 3 }}>
-                  <Typography
-                    variant="h6"
+                  <Box
                     sx={{
-                      mb: 1,
                       display: "flex",
+                      justifyContent: "space-between",
                       alignItems: "center",
-                      gap: 1,
+                      mb: 1,
                     }}
                   >
-                    Clientes a facturar
-                    <Chip
-                      label={previewData.clientesAFacturar.length}
-                      color="primary"
-                      size="small"
-                    />
-                  </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography variant="h6">Clientes a facturar</Typography>
+                      <Chip
+                        label={`${getClientesSeleccionados().length}/${
+                          previewData.clientesAFacturar.length
+                        }`}
+                        color="primary"
+                        size="small"
+                      />
+                    </Box>
+                    <Button size="small" onClick={toggleSelectAll}>
+                      {Object.values(selectedClients).every((v) => v)
+                        ? "Deseleccionar todos"
+                        : "Seleccionar todos"}
+                    </Button>
+                  </Box>
+
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Buscar cliente..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    sx={{ mb: 1 }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
 
                   <Box
                     sx={{
@@ -333,11 +395,23 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
                     }}
                   >
                     <List dense>
-                      {previewData.clientesAFacturar.map((client) => (
+                      {filteredClientes.map((client) => (
                         <ListItem
                           key={client.id}
-                          sx={{ bgcolor: "grey.50", mb: 0.5, borderRadius: 1 }}
+                          sx={{
+                            bgcolor: selectedClients[client.id]
+                              ? "primary.light"
+                              : "grey.50",
+                            mb: 0.5,
+                            borderRadius: 1,
+                            cursor: "pointer",
+                          }}
+                          onClick={() => toggleClientSelection(client.id)}
                         >
+                          <Checkbox
+                            checked={selectedClients[client.id] || false}
+                            size="small"
+                          />
                           <ListItemText
                             primary={`${client.name} ${client.lastName}`}
                             secondary={
@@ -351,11 +425,22 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
                                   color="primary"
                                   sx={{ fontWeight: "bold", ml: 0.5 }}
                                 >
-                                  $
+                                  Nueva cuota: $
                                   {client.cuotaAFacturar.toLocaleString(
                                     "es-AR"
                                   )}
                                 </Typography>
+                                {client.debt > 0 && (
+                                  <Typography
+                                    component="span"
+                                    variant="body2"
+                                    color="error"
+                                    sx={{ ml: 1 }}
+                                  >
+                                    + Deuda actual: $
+                                    {client.debt.toLocaleString("es-AR")}
+                                  </Typography>
+                                )}
                                 {client.saldoFavor > 0 && (
                                   <Typography
                                     component="span"
@@ -385,7 +470,14 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
                   >
                     <Typography variant="h6" color="primary.contrastText">
                       Total a facturar: $
-                      {previewData.totalAFacturar.toLocaleString("es-AR")}
+                      {getTotalSeleccionados().toLocaleString("es-AR")}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="primary.contrastText"
+                      sx={{ opacity: 0.8 }}
+                    >
+                      {getClientesSeleccionados().length} clientes seleccionados
                     </Typography>
                   </Box>
                 </Box>
@@ -449,7 +541,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
             disabled={
               isProcessing ||
               !previewData ||
-              previewData.clientesAFacturar.length === 0
+              getClientesSeleccionados().length === 0
             }
           >
             Confirmar Facturación
