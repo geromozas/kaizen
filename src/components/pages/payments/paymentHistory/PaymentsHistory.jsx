@@ -63,6 +63,90 @@ export const PaymentsHistory = () => {
     tipo: "", // cliente, paciente o quiropraxia
   });
 
+  // const cargarPagos = async () => {
+  //   try {
+  //     // Cargar pagos de clientes (gimnasio)
+  //     const clientPaymentsSnap = await getDocs(collection(db, "payments"));
+  //     const clientPayments = clientPaymentsSnap.docs.map((doc) => ({
+  //       id: doc.id,
+  //       ...doc.data(),
+  //       tipoPersona: "Cliente",
+  //       personaInfo: doc.data().alumno || {
+  //         name: "Sin nombre",
+  //         dni: "Sin DNI",
+  //       },
+  //       collection: "payments",
+  //     }));
+
+  //     // Cargar pagos de pacientes (kinesio)
+  //     const patientPaymentsSnap = await getDocs(
+  //       collection(db, "patientPayments")
+  //     );
+  //     const patientPayments = patientPaymentsSnap.docs.map((doc) => ({
+  //       id: doc.id,
+  //       ...doc.data(),
+  //       tipoPersona: "Paciente",
+  //       personaInfo: doc.data().paciente || {
+  //         name: "Sin nombre",
+  //         dni: "Sin DNI",
+  //       },
+  //       collection: "patientPayments",
+  //     }));
+
+  //     // Cargar pagos de quiropraxia
+  //     const quiropraxiaPaymentsSnap = await getDocs(
+  //       collection(db, "quiropraxiaPayments")
+  //     );
+  //     const quiropraxiaPayments = quiropraxiaPaymentsSnap.docs.map((doc) => ({
+  //       id: doc.id,
+  //       ...doc.data(),
+  //       tipoPersona: "Quiropraxia",
+  //       personaInfo: doc.data().pacienteQuiro || {
+  //         name: "Sin nombre",
+  //         dni: "Sin DNI",
+  //       },
+  //       collection: "quiropraxiaPayments",
+  //     }));
+
+  //     // Combinar los tres arrays
+  //     const allPayments = [
+  //       ...clientPayments,
+  //       ...patientPayments,
+  //       ...quiropraxiaPayments,
+  //     ];
+
+  //     const ordenado = allPayments.sort((a, b) => {
+  //       // Si ambos tienen createdAt, usar ese campo
+  //       if (a.createdAt && b.createdAt) {
+  //         return b.createdAt.toDate() - a.createdAt.toDate();
+  //       }
+
+  //       // Fallback: ordenar por fecha y hora string
+  //       const [d1, m1, y1] = a.fecha.split("/").map(Number);
+  //       const [d2, m2, y2] = b.fecha.split("/").map(Number);
+
+  //       // Extraer hora y minutos
+  //       const [h1, min1] = (a.hora || "00:00").split(":").map(Number);
+  //       const [h2, min2] = (b.hora || "00:00").split(":").map(Number);
+
+  //       // Crear objetos Date completos con fecha y hora
+  //       const fechaHora1 = new Date(y1, m1 - 1, d1, h1, min1);
+  //       const fechaHora2 = new Date(y2, m2 - 1, d2, h2, min2);
+
+  //       // Ordenar de más reciente a más antiguo (descendente)
+  //       return fechaHora2 - fechaHora1;
+  //     });
+
+  //     setPagos(ordenado);
+  //   } catch (error) {
+  //     console.error("Error cargando pagos:", error);
+  //     Swal.fire({
+  //       icon: "error",
+  //       title: "Error",
+  //       text: "No se pudieron cargar los pagos. Revisa la consola para más detalles.",
+  //     });
+  //   }
+  // };
   const cargarPagos = async () => {
     try {
       // Cargar pagos de clientes (gimnasio)
@@ -115,26 +199,37 @@ export const PaymentsHistory = () => {
         ...quiropraxiaPayments,
       ];
 
-      // Ordenar por createdAt si existe, sino por fecha y hora
+      // Ordenar por fecha y hora (más recientes primero)
       const ordenado = allPayments.sort((a, b) => {
+        // Si ambos tienen createdAt, usar ese campo
         if (a.createdAt && b.createdAt) {
-          return b.createdAt.toDate() - a.createdAt.toDate();
+          return (
+            b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime()
+          );
         }
 
         // Fallback: ordenar por fecha y hora string
-        const [d1, m1, y1] = a.fecha.split("/").map(Number);
-        const [d2, m2, y2] = b.fecha.split("/").map(Number);
-        const fecha1 = new Date(y1, m1 - 1, d1);
-        const fecha2 = new Date(y2, m2 - 1, d2);
+        try {
+          // Parsear fecha (formato DD/MM/YYYY)
+          const [d1, m1, y1] = (a.fecha || "01/01/2000").split("/").map(Number);
+          const [d2, m2, y2] = (b.fecha || "01/01/2000").split("/").map(Number);
 
-        if (fecha1.getTime() === fecha2.getTime()) {
-          // Si las fechas son iguales, ordenar por hora
-          const hora1 = a.hora || "00:00";
-          const hora2 = b.hora || "00:00";
-          return hora2.localeCompare(hora1);
+          // Parsear hora (formato HH:MM)
+          const hora1Str = a.hora || "00:00";
+          const hora2Str = b.hora || "00:00";
+          const [h1, min1] = hora1Str.split(":").map(Number);
+          const [h2, min2] = hora2Str.split(":").map(Number);
+
+          // Crear objetos Date completos con fecha y hora
+          const fechaHora1 = new Date(y1, m1 - 1, d1, h1 || 0, min1 || 0);
+          const fechaHora2 = new Date(y2, m2 - 1, d2, h2 || 0, min2 || 0);
+
+          // Ordenar de más reciente a más antiguo (descendente)
+          return fechaHora2.getTime() - fechaHora1.getTime();
+        } catch (error) {
+          console.error("Error ordenando pagos:", error, a, b);
+          return 0;
         }
-
-        return fecha2 - fecha1;
       });
 
       setPagos(ordenado);
