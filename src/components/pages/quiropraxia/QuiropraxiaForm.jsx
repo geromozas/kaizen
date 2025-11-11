@@ -23,6 +23,7 @@
 //   doc,
 //   updateDoc,
 //   writeBatch,
+//   Timestamp,
 // } from "firebase/firestore";
 // import { useActivities } from "../activities/useActivities";
 // import Swal from "sweetalert2";
@@ -60,6 +61,86 @@
 //   { value: "quiropraxia", label: "Quiropraxia", color: "#f57c00" },
 // ];
 
+// // Hook para pago automático
+// const useAutoPayment = () => {
+//   const registerAutoPayment = async (
+//     patientData,
+//     activityPrice,
+//     collectionName = "quiropraxiaPayments"
+//   ) => {
+//     if (!activityPrice || activityPrice <= 0) {
+//       return { success: true, message: "No se requiere pago inicial" };
+//     }
+
+//     try {
+//       const now = new Date();
+//       const fechaPago = now.toLocaleDateString("es-AR");
+//       const horaPago = now.toLocaleTimeString("es-AR", {
+//         hour12: false,
+//         hour: "2-digit",
+//         minute: "2-digit",
+//       });
+
+//       const mesPago = `${now.getFullYear()}-${String(
+//         now.getMonth() + 1
+//       ).padStart(2, "0")}`;
+
+//       const pagoAutomatico = {
+//         fecha: fechaPago,
+//         hora: horaPago,
+//         concepto: `Pago inicial - ${patientData.actividad || "Sesión"}`,
+//         metodo: "efectivo",
+//         monto: activityPrice,
+//         mes: mesPago,
+//         createdAt: Timestamp.fromDate(now),
+//         esAutomatico: true,
+//         pacienteQuiro: {
+//           name: patientData.name,
+//           lastName: patientData.lastName,
+//           dni: patientData.dni || "Sin DNI",
+//           id: patientData.id,
+//         },
+//       };
+
+//       await addDoc(collection(db, collectionName), pagoAutomatico);
+
+//       return {
+//         success: true,
+//         message: "Pago inicial registrado automáticamente",
+//         paymentAmount: activityPrice,
+//       };
+//     } catch (error) {
+//       console.error("Error al registrar pago automático:", error);
+//       return {
+//         success: false,
+//         message: "Error al registrar el pago inicial",
+//         error,
+//       };
+//     }
+//   };
+
+//   return { registerAutoPayment };
+// };
+
+// // Función para calcular estado inicial con pago automático
+// const calculateInitialPaymentState = (activityPrice) => {
+//   if (!activityPrice || activityPrice <= 0) {
+//     return {
+//       debt: 0,
+//       saldoFavor: 0,
+//       estado: "Al día",
+//       ultimoPago: null,
+//     };
+//   }
+
+//   return {
+//     debt: 0,
+//     saldoFavor: 0,
+//     estado: "Al día",
+//     ultimoPago: new Date().toLocaleDateString("es-AR"),
+//   };
+// };
+
 // export const QuiropraxiaForm = ({
 //   handleClose,
 //   setIsChange,
@@ -68,6 +149,7 @@
 // }) => {
 //   const [isUploading, setIsUploading] = useState(false);
 //   const { activities, loading: activitiesLoading } = useActivities();
+//   const { registerAutoPayment } = useAutoPayment();
 
 //   // Estados para horarios
 //   const [selectedDays, setSelectedDays] = useState([]);
@@ -162,9 +244,12 @@
 //     } else if (patientSelected && !showDebtRecalculation) {
 //       // Si es edición pero no hay cambios que afecten la deuda
 //       finalDebt = name === "debt" ? parseFloat(value) || 0 : currentDebt;
-//     } else {
-//       // Para nuevos pacientes o cuando el usuario acepta recalcular
+//     } else if (patientSelected) {
+//       // Para pacientes existentes, usar deuda calculada solo si hay recálculo
 //       finalDebt = calculatedDebt;
+//     } else {
+//       // Para nuevos pacientes, siempre usar 0 (se pagará automáticamente)
+//       finalDebt = 0;
 //     }
 
 //     const currentSaldoFavor =
@@ -379,6 +464,7 @@
 //       const patientsRef = collection(db, "quiropraxia");
 
 //       if (patientSelected) {
+//         // Actualización de paciente existente
 //         const dataToUpdate = {
 //           ...patientSelected,
 //           estado: calcularEstado(
@@ -387,6 +473,7 @@
 //           ),
 //         };
 //         await updateDoc(doc(patientsRef, patientSelected.id), dataToUpdate);
+
 //         Swal.fire({
 //           icon: "success",
 //           title: "Paciente modificado",
@@ -395,18 +482,39 @@
 //           showConfirmButton: false,
 //         });
 //       } else {
-//         const estadoInicial = calcularEstado(
-//           newPatient.debt,
-//           newPatient.saldoFavor || 0
+//         // Creación de nuevo paciente
+//         const selectedActivity = activities.find(
+//           (activity) => activity.label === newPatient.actividad
 //         );
+//         const activityPrice = selectedActivity
+//           ? (selectedActivity.valor || 0) * newPatient.sesiones
+//           : 0;
+
+//         // Calcular estado inicial con pago automático
+//         const initialPaymentState = calculateInitialPaymentState(activityPrice);
 
 //         const patientData = {
 //           ...newPatient,
-//           estado: estadoInicial,
+//           ...initialPaymentState,
 //           fechaCreacion: new Date().toISOString(),
 //         };
 
 //         const docRef = await addDoc(patientsRef, patientData);
+
+//         // Registrar pago automático para nuevos pacientes de quiropraxia
+//         if (activityPrice > 0) {
+//           const paymentResult = await registerAutoPayment(
+//             { ...patientData, id: docRef.id },
+//             activityPrice,
+//             "quiropraxiaPayments"
+//           );
+
+//           console.log(
+//             paymentResult.success
+//               ? `✅ Pago inicial registrado: $${paymentResult.paymentAmount}`
+//               : `❌ Error en pago automático: ${paymentResult.message}`
+//           );
+//         }
 
 //         // Crear horarios si está habilitado
 //         if (createSchedules) {
@@ -416,10 +524,13 @@
 //         Swal.fire({
 //           icon: "success",
 //           title: "Paciente creado",
-//           text: createSchedules
-//             ? "El paciente y sus horarios fueron creados con éxito"
-//             : "El paciente fue agregado con éxito",
-//           timer: 2500,
+//           text:
+//             activityPrice > 0
+//               ? `Paciente creado y pago de $${activityPrice.toLocaleString()} registrado automáticamente`
+//               : createSchedules
+//               ? "El paciente y sus horarios fueron creados con éxito"
+//               : "El paciente fue agregado con éxito",
+//           timer: 3500,
 //           showConfirmButton: false,
 //         });
 //       }
@@ -470,6 +581,13 @@
 //       <Typography variant="h4" component="h1">
 //         {patientSelected ? "Editar Paciente" : "Nuevo Paciente"}
 //       </Typography>
+
+//       {!patientSelected && (
+//         <Alert severity="info" sx={{ mb: 2 }}>
+//           Al crear un nuevo paciente, se registrará automáticamente el pago
+//           inicial por el servicio seleccionado.
+//         </Alert>
+//       )}
 
 //       <TextField
 //         label="Nombre"
@@ -577,6 +695,18 @@
 //         helperText="Número de sesiones programadas"
 //       />
 
+//       {/* Mostrar costo total para nuevos pacientes */}
+//       {!patientSelected && newPatient.actividad && (
+//         <Alert severity="success" sx={{ mb: 2 }}>
+//           <Typography variant="body2">
+//             <strong>Costo total:</strong> $
+//             {(activities.find((a) => a.label === newPatient.actividad)?.valor ||
+//               0) * newPatient.sesiones}{" "}
+//             (se registrará como pago inicial automáticamente)
+//           </Typography>
+//         </Alert>
+//       )}
+
 //       {/* Alerta para recálculo de deuda */}
 //       {showDebtRecalculation && (
 //         <Alert
@@ -630,7 +760,7 @@
 //         helperText={
 //           patientSelected
 //             ? "Puedes editar la deuda manualmente si es necesario"
-//             : "La deuda se calcula automáticamente"
+//             : "Nuevos pacientes inician con deuda $0 (pago automático)"
 //         }
 //       />
 
@@ -895,86 +1025,6 @@ const activityTypes = [
   { value: "quiropraxia", label: "Quiropraxia", color: "#f57c00" },
 ];
 
-// Hook para pago automático
-const useAutoPayment = () => {
-  const registerAutoPayment = async (
-    patientData,
-    activityPrice,
-    collectionName = "quiropraxiaPayments"
-  ) => {
-    if (!activityPrice || activityPrice <= 0) {
-      return { success: true, message: "No se requiere pago inicial" };
-    }
-
-    try {
-      const now = new Date();
-      const fechaPago = now.toLocaleDateString("es-AR");
-      const horaPago = now.toLocaleTimeString("es-AR", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-      const mesPago = `${now.getFullYear()}-${String(
-        now.getMonth() + 1
-      ).padStart(2, "0")}`;
-
-      const pagoAutomatico = {
-        fecha: fechaPago,
-        hora: horaPago,
-        concepto: `Pago inicial - ${patientData.actividad || "Sesión"}`,
-        metodo: "efectivo",
-        monto: activityPrice,
-        mes: mesPago,
-        createdAt: Timestamp.fromDate(now),
-        esAutomatico: true,
-        pacienteQuiro: {
-          name: patientData.name,
-          lastName: patientData.lastName,
-          dni: patientData.dni || "Sin DNI",
-          id: patientData.id,
-        },
-      };
-
-      await addDoc(collection(db, collectionName), pagoAutomatico);
-
-      return {
-        success: true,
-        message: "Pago inicial registrado automáticamente",
-        paymentAmount: activityPrice,
-      };
-    } catch (error) {
-      console.error("Error al registrar pago automático:", error);
-      return {
-        success: false,
-        message: "Error al registrar el pago inicial",
-        error,
-      };
-    }
-  };
-
-  return { registerAutoPayment };
-};
-
-// Función para calcular estado inicial con pago automático
-const calculateInitialPaymentState = (activityPrice) => {
-  if (!activityPrice || activityPrice <= 0) {
-    return {
-      debt: 0,
-      saldoFavor: 0,
-      estado: "Al día",
-      ultimoPago: null,
-    };
-  }
-
-  return {
-    debt: 0,
-    saldoFavor: 0,
-    estado: "Al día",
-    ultimoPago: new Date().toLocaleDateString("es-AR"),
-  };
-};
-
 export const QuiropraxiaForm = ({
   handleClose,
   setIsChange,
@@ -983,7 +1033,6 @@ export const QuiropraxiaForm = ({
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const { activities, loading: activitiesLoading } = useActivities();
-  const { registerAutoPayment } = useAutoPayment();
 
   // Estados para horarios
   const [selectedDays, setSelectedDays] = useState([]);
@@ -991,11 +1040,6 @@ export const QuiropraxiaForm = ({
   const [createSchedules, setCreateSchedules] = useState(false);
   const [activityType, setActivityType] = useState("quiropraxia");
   const [replicateToYear, setReplicateToYear] = useState(true);
-
-  // Estados para control de recálculo de deuda
-  const [showDebtRecalculation, setShowDebtRecalculation] = useState(false);
-  const [originalDebt, setOriginalDebt] = useState(0);
-  const [manualDebtOverride, setManualDebtOverride] = useState(false);
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -1010,153 +1054,42 @@ export const QuiropraxiaForm = ({
     phoneHelp: "",
     dni: "",
     actividad: "",
-    sesiones: 1,
-    debt: 0,
-    lastpay: "",
+    sessions: 1,
+    sesionesRestantes: 0,
+    sesionesCompradas: 0,
+    precioSesion: 0,
     condition: "",
     treatment: "",
     fechaInicio: getCurrentDate(),
   });
 
-  const calcularDeuda = (actividadLabel, sesiones) => {
-    const actividad = activities.find((a) => a.label === actividadLabel);
-    if (!actividad || sesiones == null || sesiones <= 0) return 0;
-    return actividad.valor * sesiones;
-  };
-
-  const calcularEstado = (debt, saldoFavor = 0) => {
-    if (saldoFavor > 0) {
-      return "Saldo a favor";
-    } else if (debt > 0) {
-      return "Deudor";
-    } else {
-      return "Al día";
-    }
-  };
-
-  // Función para verificar si el recálculo afectaría la deuda existente
-  const shouldShowRecalculationWarning = (newDebt, currentDebt) => {
-    return patientSelected && currentDebt !== 0 && newDebt !== currentDebt;
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Si es un cliente existente y estamos cambiando actividad o sesiones
-    const isDebtAffectingChange =
-      patientSelected && (name === "actividad" || name === "sesiones");
+    let updatedValues = {
+      [name]: name === "sessions" ? parseInt(value) || 0 : value,
+    };
 
-    let updatedActividad =
-      name === "actividad"
-        ? value
-        : patientSelected?.actividad || newPatient.actividad;
-
-    let updatedSesiones =
-      name === "sesiones"
-        ? parseInt(value) || 0
-        : patientSelected?.sesiones || newPatient.sesiones;
-
-    const calculatedDebt = calcularDeuda(updatedActividad, updatedSesiones);
-    const currentDebt = patientSelected?.debt || newPatient.debt;
-
-    // Verificar si necesitamos mostrar advertencia de recálculo
-    if (
-      isDebtAffectingChange &&
-      shouldShowRecalculationWarning(calculatedDebt, currentDebt)
-    ) {
-      if (!showDebtRecalculation) {
-        setOriginalDebt(currentDebt);
-        setShowDebtRecalculation(true);
+    // Si cambia la actividad, actualizar el precio por sesión
+    if (name === "actividad") {
+      const selectedActivity = activities.find((a) => a.label === value);
+      if (selectedActivity) {
+        updatedValues.precioSesion = selectedActivity.valor || 0;
       }
     }
 
-    // Determinar qué deuda usar
-    let finalDebt;
-    if (patientSelected && manualDebtOverride) {
-      // Si el usuario decidió mantener la deuda manual, no recalcular
-      finalDebt = currentDebt;
-    } else if (patientSelected && !showDebtRecalculation) {
-      // Si es edición pero no hay cambios que afecten la deuda
-      finalDebt = name === "debt" ? parseFloat(value) || 0 : currentDebt;
-    } else if (patientSelected) {
-      // Para pacientes existentes, usar deuda calculada solo si hay recálculo
-      finalDebt = calculatedDebt;
-    } else {
-      // Para nuevos pacientes, siempre usar 0 (se pagará automáticamente)
-      finalDebt = 0;
+    // Si cambia las sesiones, actualizar sesiones compradas y restantes
+    if (name === "sessions") {
+      const sessions = parseInt(value) || 0;
+      updatedValues.sesionesCompradas = sessions;
+      updatedValues.sesionesRestantes = sessions;
     }
-
-    const currentSaldoFavor =
-      patientSelected?.saldoFavor || newPatient.saldoFavor || 0;
-    const updatedEstado = calcularEstado(finalDebt, currentSaldoFavor);
-
-    const updatedValues = {
-      [name]: name === "sesiones" ? parseInt(value) || 0 : value,
-      debt: finalDebt,
-      estado: updatedEstado,
-    };
 
     if (patientSelected) {
       setPatientSelected({
         ...patientSelected,
         ...updatedValues,
       });
-    } else {
-      setNewPatient({
-        ...newPatient,
-        ...updatedValues,
-      });
-    }
-  };
-
-  // Función para manejar la decisión del usuario sobre el recálculo
-  const handleDebtRecalculationDecision = (shouldRecalculate) => {
-    const currentPatient = patientSelected;
-    const calculatedDebt = calcularDeuda(
-      currentPatient.actividad,
-      currentPatient.sesiones
-    );
-
-    if (shouldRecalculate) {
-      // Recalcular la deuda
-      const updatedEstado = calcularEstado(
-        calculatedDebt,
-        currentPatient.saldoFavor || 0
-      );
-      setPatientSelected({
-        ...currentPatient,
-        debt: calculatedDebt,
-        estado: updatedEstado,
-      });
-      setManualDebtOverride(false);
-    } else {
-      // Mantener la deuda original
-      setManualDebtOverride(true);
-    }
-
-    setShowDebtRecalculation(false);
-  };
-
-  // Función para permitir edición manual de la deuda
-  const handleManualDebtChange = (e) => {
-    const newDebt = parseFloat(e.target.value) || 0;
-    const currentPatient = patientSelected || newPatient;
-    const updatedEstado = calcularEstado(
-      newDebt,
-      currentPatient.saldoFavor || 0
-    );
-
-    const updatedValues = {
-      debt: newDebt,
-      estado: updatedEstado,
-    };
-
-    if (patientSelected) {
-      setPatientSelected({
-        ...patientSelected,
-        ...updatedValues,
-      });
-      setManualDebtOverride(true);
     } else {
       setNewPatient({
         ...newPatient,
@@ -1301,10 +1234,6 @@ export const QuiropraxiaForm = ({
         // Actualización de paciente existente
         const dataToUpdate = {
           ...patientSelected,
-          estado: calcularEstado(
-            patientSelected.debt,
-            patientSelected.saldoFavor || 0
-          ),
         };
         await updateDoc(doc(patientsRef, patientSelected.id), dataToUpdate);
 
@@ -1320,37 +1249,18 @@ export const QuiropraxiaForm = ({
         const selectedActivity = activities.find(
           (activity) => activity.label === newPatient.actividad
         );
-        const activityPrice = selectedActivity
-          ? (selectedActivity.valor || 0) * newPatient.sesiones
-          : 0;
-
-        // Calcular estado inicial con pago automático
-        const initialPaymentState = calculateInitialPaymentState(activityPrice);
+        const precioSesion = selectedActivity ? selectedActivity.valor || 0 : 0;
 
         const patientData = {
           ...newPatient,
-          ...initialPaymentState,
+          sesionesCompradas: newPatient.sessions,
+          sesionesRestantes: newPatient.sessions,
+          precioSesion: precioSesion,
           fechaCreacion: new Date().toISOString(),
         };
 
         const docRef = await addDoc(patientsRef, patientData);
 
-        // Registrar pago automático para nuevos pacientes de quiropraxia
-        if (activityPrice > 0) {
-          const paymentResult = await registerAutoPayment(
-            { ...patientData, id: docRef.id },
-            activityPrice,
-            "quiropraxiaPayments"
-          );
-
-          console.log(
-            paymentResult.success
-              ? `✅ Pago inicial registrado: $${paymentResult.paymentAmount}`
-              : `❌ Error en pago automático: ${paymentResult.message}`
-          );
-        }
-
-        // Crear horarios si está habilitado
         if (createSchedules) {
           await createPatientSchedules(docRef.id, patientData);
         }
@@ -1358,12 +1268,9 @@ export const QuiropraxiaForm = ({
         Swal.fire({
           icon: "success",
           title: "Paciente creado",
-          text:
-            activityPrice > 0
-              ? `Paciente creado y pago de $${activityPrice.toLocaleString()} registrado automáticamente`
-              : createSchedules
-              ? "El paciente y sus horarios fueron creados con éxito"
-              : "El paciente fue agregado con éxito",
+          text: createSchedules
+            ? "El paciente y sus horarios fueron creados con éxito"
+            : "El paciente fue agregado con éxito",
           timer: 3500,
           showConfirmButton: false,
         });
@@ -1378,13 +1285,6 @@ export const QuiropraxiaForm = ({
       setIsUploading(false);
     }
   };
-
-  // Efecto simplificado para inicialización
-  useEffect(() => {
-    if (patientSelected) {
-      setOriginalDebt(patientSelected.debt || 0);
-    }
-  }, [patientSelected?.id]); // Solo cuando cambia el paciente seleccionado
 
   return (
     <Box
@@ -1418,8 +1318,8 @@ export const QuiropraxiaForm = ({
 
       {!patientSelected && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Al crear un nuevo paciente, se registrará automáticamente el pago
-          inicial por el servicio seleccionado.
+          El paciente comprará un paquete de sesiones. Se registrará el pago
+          cada vez que asista.
         </Alert>
       )}
 
@@ -1511,98 +1411,36 @@ export const QuiropraxiaForm = ({
         ) : (
           activities.map((actividad) => (
             <MenuItem key={actividad.id} value={actividad.label}>
-              {actividad.label} - ${actividad.valor.toLocaleString()}
+              {actividad.label} - ${actividad.valor.toLocaleString()} por sesión
             </MenuItem>
           ))
         )}
       </TextField>
 
       <TextField
-        label="Cantidad de Sesiones"
-        name="sesiones"
+        label="Cantidad de sesiones a comprar"
+        name="sessions"
         type="number"
-        value={patientSelected?.sesiones || newPatient.sesiones}
+        value={patientSelected?.sessions || newPatient.sessions}
         onChange={handleChange}
-        fullWidth
-        required
-        inputProps={{ min: 1, step: 1 }}
-        helperText="Número de sesiones programadas"
+        inputProps={{ min: 1 }}
       />
 
-      {/* Mostrar costo total para nuevos pacientes */}
       {!patientSelected && newPatient.actividad && (
         <Alert severity="success" sx={{ mb: 2 }}>
           <Typography variant="body2">
-            <strong>Costo total:</strong> $
+            <strong>Paquete:</strong> {newPatient.sessions} sesiones
+            <br />
+            <strong>Precio por sesión:</strong> $
+            {activities.find((a) => a.label === newPatient.actividad)?.valor ||
+              0}
+            <br />
+            <strong>Total a pagar:</strong> $
             {(activities.find((a) => a.label === newPatient.actividad)?.valor ||
-              0) * newPatient.sesiones}{" "}
-            (se registrará como pago inicial automáticamente)
+              0) * newPatient.sessions}
           </Typography>
         </Alert>
       )}
-
-      {/* Alerta para recálculo de deuda */}
-      {showDebtRecalculation && (
-        <Alert
-          severity="warning"
-          sx={{ mb: 2 }}
-          action={
-            <Box sx={{ display: "flex", gap: 1 }}>
-              <Button
-                size="small"
-                onClick={() => handleDebtRecalculationDecision(true)}
-                color="warning"
-              >
-                Recalcular
-              </Button>
-              <Button
-                size="small"
-                onClick={() => handleDebtRecalculationDecision(false)}
-                variant="outlined"
-                color="warning"
-              >
-                Mantener actual
-              </Button>
-            </Box>
-          }
-        >
-          <Typography variant="body2">
-            <strong>¡Atención!</strong> Los cambios en el servicio o sesiones
-            afectarían la deuda.
-            <br />
-            <strong>Deuda actual:</strong> ${originalDebt.toLocaleString()}
-            <br />
-            <strong>Nueva deuda calculada:</strong> $
-            {calcularDeuda(
-              patientSelected?.actividad || newPatient.actividad,
-              patientSelected?.sesiones || newPatient.sesiones
-            ).toLocaleString()}
-          </Typography>
-        </Alert>
-      )}
-
-      {/* Campo de deuda - editable para pacientes existentes */}
-      <TextField
-        label="Deuda"
-        type="number"
-        value={patientSelected?.debt || newPatient.debt}
-        onChange={handleManualDebtChange}
-        InputProps={{
-          startAdornment: <Typography>$</Typography>,
-          readOnly: !patientSelected, // Solo editable para pacientes existentes
-        }}
-        helperText={
-          patientSelected
-            ? "Puedes editar la deuda manualmente si es necesario"
-            : "Nuevos pacientes inician con deuda $0 (pago automático)"
-        }
-      />
-
-      <Typography>
-        <strong>Estado:</strong>{" "}
-        {patientSelected?.estado ||
-          calcularEstado(newPatient.debt, newPatient.saldoFavor || 0)}
-      </Typography>
 
       {patientSelected && patientSelected.fechaCreacion && (
         <Typography variant="body2" color="textSecondary">
@@ -1632,7 +1470,6 @@ export const QuiropraxiaForm = ({
 
           {createSchedules && (
             <Box sx={{ mt: 2 }}>
-              {/* Selector de tipo de actividad */}
               <Typography variant="h6" gutterBottom>
                 Tipo de Actividad
               </Typography>
@@ -1654,7 +1491,6 @@ export const QuiropraxiaForm = ({
                 </Box>
               </Paper>
 
-              {/* Días de la semana */}
               <Typography variant="h6" gutterBottom>
                 Días de la Semana
               </Typography>
@@ -1675,7 +1511,6 @@ export const QuiropraxiaForm = ({
                 </FormGroup>
               </Paper>
 
-              {/* Horarios por día */}
               {selectedDays.length > 0 && (
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="h6" gutterBottom>
@@ -1748,7 +1583,6 @@ export const QuiropraxiaForm = ({
                 label="Replicar horarios a todo el año"
               />
 
-              {/* Resumen */}
               {selectedDays.length > 0 && getTotalSchedules() > 0 && (
                 <Box sx={{ mt: 2, p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
                   <Typography variant="body2" color="textSecondary">
