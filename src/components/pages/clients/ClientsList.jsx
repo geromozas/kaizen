@@ -25,6 +25,7 @@ import {
   FormControlLabel,
   Radio,
   Tooltip,
+  Checkbox,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -112,6 +113,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
   const [tipoPago, setTipoPago] = useState("normal");
   const [mesesAdelantados, setMesesAdelantados] = useState(1);
   const [fechaInicioAdelantado, setFechaInicioAdelantado] = useState("");
+  const [cobrarSinDeuda, setCobrarSinDeuda] = useState(false);
 
   const [openScheduleAssignment, setOpenScheduleAssignment] = useState(false);
   const [clientForSchedule, setClientForSchedule] = useState(null);
@@ -144,6 +146,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
     setTipoPago("normal");
     setMesesAdelantados(1);
     setFechaInicioAdelantado("");
+    setCobrarSinDeuda(false);
     setNuevoPago({
       concepto: "",
       metodo: "",
@@ -185,6 +188,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
 
   const handleOpenPaymentModal = (client) => {
     setClientSelected(client);
+    setCobrarSinDeuda(false);
 
     let aviso = "";
     const deudaTotal = (client.debt || 0) + (client.deudaAnterior || 0);
@@ -325,57 +329,82 @@ const ClientsList = ({ clients = [], setIsChange }) => {
           )}`;
         }
       } else {
-        if (saldoFavorActual > 0) {
-          const nuevoSaldoFavor = saldoFavorActual + monto;
-          avisoDetallado = `💚 Nuevo saldo a favor: $${nuevoSaldoFavor.toLocaleString(
-            "es-AR"
-          )}`;
-        } else if (deudaTotal > 0) {
-          if (monto > deudaTotal) {
-            const saldoFavor = monto - deudaTotal;
-            avisoDetallado = `🎉 Cubre toda la deuda ($${deudaTotal.toLocaleString(
-              "es-AR"
-            )}) + $${saldoFavor.toLocaleString("es-AR")} a favor`;
-          } else if (monto === deudaTotal) {
-            avisoDetallado = `✅ Cubre exactamente toda la deuda ($${deudaTotal.toLocaleString(
+        if (cobrarSinDeuda) {
+          if (monto >= deudaTotal) {
+            const sobrante = monto - deudaTotal;
+            avisoDetallado = `✅ Se cobrará sin deuda. Cliente quedará "Al día"${
+              sobrante > 0
+                ? ` con $${sobrante.toLocaleString("es-AR")} a favor`
+                : ""
+            }`;
+          } else {
+            const diferencia = deudaTotal - monto;
+            avisoDetallado = `✅ Se cobrará sin deuda. Cliente quedará "Al día" (se le descuenta $${diferencia.toLocaleString(
               "es-AR"
             )})`;
-          } else {
-            const deudaRestante = deudaTotal - monto;
-
-            if (deudaAnterior > 0) {
-              if (monto >= deudaAnterior) {
-                const sobrante = monto - deudaAnterior;
-                const nuevaDeudaActual = deudaActual - sobrante;
-                avisoDetallado = `✅ Cubre deuda anterior completa ($${deudaAnterior.toLocaleString(
-                  "es-AR"
-                )}) + $${sobrante.toLocaleString(
-                  "es-AR"
-                )} de mes actual. Restante: $${deudaRestante.toLocaleString(
-                  "es-AR"
-                )}`;
-              } else {
-                const nuevaDeudaAnterior = deudaAnterior - monto;
-                avisoDetallado = `⚠️ Se aplica a deuda anterior. Nueva deuda anterior: $${nuevaDeudaAnterior.toLocaleString(
-                  "es-AR"
-                )}. Total restante: $${deudaRestante.toLocaleString("es-AR")}`;
-              }
-            } else {
-              avisoDetallado = `⚠️ Cubre $${monto.toLocaleString(
-                "es-AR"
-              )} de deuda. Restante: $${deudaRestante.toLocaleString("es-AR")}`;
-            }
           }
         } else {
-          avisoDetallado = `💚 Generará saldo a favor de $${monto.toLocaleString(
-            "es-AR"
-          )}`;
+          if (saldoFavorActual > 0) {
+            const nuevoSaldoFavor = saldoFavorActual + monto;
+            avisoDetallado = `💚 Nuevo saldo a favor: $${nuevoSaldoFavor.toLocaleString(
+              "es-AR"
+            )}`;
+          } else if (deudaTotal > 0) {
+            if (monto > deudaTotal) {
+              const saldoFavor = monto - deudaTotal;
+              avisoDetallado = `🎉 Cubre toda la deuda ($${deudaTotal.toLocaleString(
+                "es-AR"
+              )}) + $${saldoFavor.toLocaleString("es-AR")} a favor`;
+            } else if (monto === deudaTotal) {
+              avisoDetallado = `✅ Cubre exactamente toda la deuda ($${deudaTotal.toLocaleString(
+                "es-AR"
+              )})`;
+            } else {
+              const deudaRestante = deudaTotal - monto;
+
+              if (deudaAnterior > 0) {
+                if (monto >= deudaAnterior) {
+                  const sobrante = monto - deudaAnterior;
+                  avisoDetallado = `✅ Cubre deuda anterior completa ($${deudaAnterior.toLocaleString(
+                    "es-AR"
+                  )}) + $${sobrante.toLocaleString(
+                    "es-AR"
+                  )} de mes actual. Restante: $${deudaRestante.toLocaleString(
+                    "es-AR"
+                  )}`;
+                } else {
+                  const nuevaDeudaAnterior = deudaAnterior - monto;
+                  avisoDetallado = `⚠️ Se aplica a deuda anterior. Nueva deuda anterior: $${nuevaDeudaAnterior.toLocaleString(
+                    "es-AR"
+                  )}. Total restante: $${deudaRestante.toLocaleString(
+                    "es-AR"
+                  )}`;
+                }
+              } else {
+                avisoDetallado = `⚠️ Cubre $${monto.toLocaleString(
+                  "es-AR"
+                )} de deuda. Restante: $${deudaRestante.toLocaleString(
+                  "es-AR"
+                )}`;
+              }
+            }
+          } else {
+            avisoDetallado = `💚 Generará saldo a favor de $${monto.toLocaleString(
+              "es-AR"
+            )}`;
+          }
         }
       }
 
       setAvisoSaldo(avisoDetallado);
     }
-  }, [nuevoPago.monto, clientSelected, tipoPago, mesesAdelantados]);
+  }, [
+    nuevoPago.monto,
+    clientSelected,
+    tipoPago,
+    mesesAdelantados,
+    cobrarSinDeuda,
+  ]);
 
   const handleRegistrarPago = async () => {
     if (!clientSelected || !nuevoPago.monto || !nuevoPago.metodo) {
@@ -509,7 +538,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         metodo: nuevoPago.metodo,
         monto: montoPagado,
         mes: mesPago,
-        tipoPago: "normal",
+        tipoPago: cobrarSinDeuda ? "sin_deuda" : "normal",
         createdAt: Timestamp.fromDate(fechaPago),
         alumno: {
           name: clientSelected.name,
@@ -529,36 +558,49 @@ const ClientsList = ({ clients = [], setIsChange }) => {
       let nuevoEstado = "Al día";
       let nuevaDeudaAnterior = 0;
 
-      if (saldoFavorActual > 0) {
-        nuevoSaldoFavor = saldoFavorActual + montoPagado;
+      if (cobrarSinDeuda) {
         nuevaDeuda = 0;
         nuevaDeudaAnterior = 0;
-        nuevoEstado = "Al día";
-      } else if (deudaTotal > 0) {
-        if (montoPagado >= deudaTotal) {
+
+        if (montoPagado > deudaTotal) {
           nuevoSaldoFavor = montoPagado - deudaTotal;
+        } else {
+          nuevoSaldoFavor = 0;
+        }
+
+        nuevoEstado = "Al día";
+      } else {
+        if (saldoFavorActual > 0) {
+          nuevoSaldoFavor = saldoFavorActual + montoPagado;
           nuevaDeuda = 0;
           nuevaDeudaAnterior = 0;
           nuevoEstado = "Al día";
-        } else {
-          nuevoSaldoFavor = 0;
-
-          if (montoPagado >= deudaAnterior) {
-            const sobrante = montoPagado - deudaAnterior;
+        } else if (deudaTotal > 0) {
+          if (montoPagado >= deudaTotal) {
+            nuevoSaldoFavor = montoPagado - deudaTotal;
+            nuevaDeuda = 0;
             nuevaDeudaAnterior = 0;
-            nuevaDeuda = deudaActual - sobrante;
+            nuevoEstado = "Al día";
           } else {
-            nuevaDeudaAnterior = deudaAnterior - montoPagado;
-            nuevaDeuda = deudaActual;
-          }
+            nuevoSaldoFavor = 0;
 
-          nuevoEstado = "Deudor";
+            if (montoPagado >= deudaAnterior) {
+              const sobrante = montoPagado - deudaAnterior;
+              nuevaDeudaAnterior = 0;
+              nuevaDeuda = deudaActual - sobrante;
+            } else {
+              nuevaDeudaAnterior = deudaAnterior - montoPagado;
+              nuevaDeuda = deudaActual;
+            }
+
+            nuevoEstado = "Deudor";
+          }
+        } else {
+          nuevoSaldoFavor = montoPagado;
+          nuevaDeuda = 0;
+          nuevaDeudaAnterior = 0;
+          nuevoEstado = "Al día";
         }
-      } else {
-        nuevoSaldoFavor = montoPagado;
-        nuevaDeuda = 0;
-        nuevaDeudaAnterior = 0;
-        nuevoEstado = "Al día";
       }
 
       const updateData = {
@@ -579,8 +621,12 @@ const ClientsList = ({ clients = [], setIsChange }) => {
 
         Swal.fire({
           icon: "success",
-          title: "Pago registrado",
-          text: "El pago fue registrado exitosamente ✅",
+          title: cobrarSinDeuda
+            ? "Pago sin deuda registrado"
+            : "Pago registrado",
+          text: cobrarSinDeuda
+            ? "El pago fue aceptado sin generar deuda ✅"
+            : "El pago fue registrado exitosamente ✅",
           timer: 2000,
           showConfirmButton: false,
         });
@@ -945,6 +991,34 @@ const ClientsList = ({ clients = [], setIsChange }) => {
             </RadioGroup>
           </Box>
 
+          {tipoPago === "normal" &&
+            clientSelected &&
+            (clientSelected.debt || 0) + (clientSelected.deudaAnterior || 0) >
+              0 && (
+              <Box sx={{ mb: 2, p: 1.5, bgcolor: "grey.50", borderRadius: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={cobrarSinDeuda}
+                      onChange={(e) => setCobrarSinDeuda(e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                        Cobrar sin deuda
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Acepta el pago como válido sin importar si cubre la
+                        deuda total (útil para descuentos o reserva de lugar)
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </Box>
+            )}
+
           {tipoPago === "adelantado" && clientSelected && (
             <Box sx={{ mb: 2, p: 2, bgcolor: "#e3f2fd", borderRadius: 1 }}>
               <Typography
@@ -1035,7 +1109,8 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                 avisoSaldo.includes("favor") ||
                 avisoSaldo.includes("exactamente") ||
                 avisoSaldo.includes("toda la deuda") ||
-                avisoSaldo.includes("cubre")
+                avisoSaldo.includes("cubre") ||
+                avisoSaldo.includes("condonan")
                   ? "success"
                   : avisoSaldo.includes("Restante") ||
                     avisoSaldo.includes("anterior")
@@ -1130,7 +1205,11 @@ const ClientsList = ({ clients = [], setIsChange }) => {
               size="small"
               disabled={!nuevoPago.monto || !nuevoPago.metodo}
             >
-              {tipoPago === "adelantado" ? "Pagar Adelantado" : "Registrar"}
+              {tipoPago === "adelantado"
+                ? "Pagar Adelantado"
+                : cobrarSinDeuda
+                ? "Cobrar sin Deuda"
+                : "Registrar"}
             </Button>
           </Box>
         </Box>
@@ -1548,7 +1627,6 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         onClose={handleCloseScheduleAssignment}
         client={clientForSchedule}
         onSuccess={() => {
-          // Opcional: refrescar datos si es necesario
           setIsChange(true);
         }}
       />
