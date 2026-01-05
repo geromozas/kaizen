@@ -385,21 +385,21 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
     const result = await Swal.fire({
       title: "¿Confirmar facturación?",
       html: `
-        <p>Se facturarán <strong>${
-          clientesSeleccionados.length
-        }</strong> clientes</p>
-        <p>Total nuevas cuotas: <strong>${totalSeleccionado.toLocaleString(
-          "es-AR"
-        )}</strong></p>
-        <p>Mes a facturar: <strong>${formatearMesLegible(
-          mesParaFacturar
-        )}</strong></p>
-        ${
-          mesAFacturar === "actual"
-            ? '<p style="color: #f57c00;"><strong>⚠️ Este es el mes actual</strong></p>'
-            : '<p style="color: #1976d2;"><strong>📅 Facturando mes siguiente (adelantado)</strong></p>'
-        }
-      `,
+      <p>Se facturarán <strong>${
+        clientesSeleccionados.length
+      }</strong> clientes</p>
+      <p>Total nuevas cuotas: <strong>${totalSeleccionado.toLocaleString(
+        "es-AR"
+      )}</strong></p>
+      <p>Mes a facturar: <strong>${formatearMesLegible(
+        mesParaFacturar
+      )}</strong></p>
+      ${
+        mesAFacturar === "actual"
+          ? '<p style="color: #f57c00;"><strong>⚠️ Este es el mes actual</strong></p>'
+          : '<p style="color: #1976d2;"><strong>📅 Facturando mes siguiente (adelantado)</strong></p>'
+      }
+    `,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Sí, facturar",
@@ -448,7 +448,8 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
               if (saldoFavor >= cuotaNueva) {
                 nuevoSaldoFavor = saldoFavor - cuotaNueva;
                 nuevaDeuda = 0;
-                nuevoEstado = "Al día";
+                // ✅ FIX: Verificar si tiene deuda anterior para determinar estado
+                nuevoEstado = nuevaDeudaAnterior > 0 ? "Deudor" : "Al día";
               } else {
                 nuevaDeuda = cuotaNueva - saldoFavor;
                 nuevoSaldoFavor = 0;
@@ -456,12 +457,13 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
               }
             } else {
               nuevaDeuda = cuotaNueva;
+              // ✅ FIX: Siempre será deudor si tiene cuota nueva (con o sin deuda anterior)
               nuevoEstado = "Deudor";
             }
           } else {
             // LÓGICA PARA MES SIGUIENTE: No arrastramos deudas, facturamos limpio
 
-            // La deuda anterior se mantiene
+            // La deuda anterior se mantiene y suma la actual
             nuevaDeudaAnterior = deudaAnterior + deudaActual;
 
             // Aplicar saldo a favor si existe
@@ -469,6 +471,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
               if (saldoFavor >= cuotaNueva) {
                 nuevoSaldoFavor = saldoFavor - cuotaNueva;
                 nuevaDeuda = 0;
+                // ✅ FIX: Verificar si tiene deuda anterior para determinar estado
                 nuevoEstado = nuevaDeudaAnterior > 0 ? "Deudor" : "Al día";
               } else {
                 nuevaDeuda = cuotaNueva - saldoFavor;
@@ -507,13 +510,13 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
         icon: "success",
         title: "Facturación completada",
         html: `
-          <p>✅ Clientes facturados: <strong>${procesados}</strong></p>
-          ${errores > 0 ? `<p>⚠️ Errores: <strong>${errores}</strong></p>` : ""}
-          <p>Total facturado: <strong>${totalSeleccionado.toLocaleString(
-            "es-AR"
-          )}</strong></p>
-          <p>Mes: <strong>${formatearMesLegible(mesParaFacturar)}</strong></p>
-        `,
+        <p>✅ Clientes facturados: <strong>${procesados}</strong></p>
+        ${errores > 0 ? `<p>⚠️ Errores: <strong>${errores}</strong></p>` : ""}
+        <p>Total facturado: <strong>${totalSeleccionado.toLocaleString(
+          "es-AR"
+        )}</strong></p>
+        <p>Mes: <strong>${formatearMesLegible(mesParaFacturar)}</strong></p>
+      `,
         timer: 4000,
       });
     } catch (error) {

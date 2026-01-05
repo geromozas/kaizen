@@ -878,20 +878,14 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                       <Typography
                         variant="body2"
                         sx={{
-                          color:
-                            (client.estado === "Inactivo" ? 0 : deudaTotal) > 0
-                              ? "error.main"
-                              : "success.main",
+                          color: deudaTotal > 0 ? "error.main" : "success.main",
                           fontWeight: "bold",
                           fontSize: "0.875rem",
                         }}
                       >
-                        $
-                        {client.estado === "Inactivo"
-                          ? 0
-                          : deudaTotal.toLocaleString("es-AR")}
+                        ${deudaTotal.toLocaleString("es-AR")}
                       </Typography>
-                      {tieneDeudaAnterior && client.estado !== "Inactivo" && (
+                      {tieneDeudaAnterior && (
                         <Tooltip
                           title={`Deuda anterior: ${client.deudaAnterior.toLocaleString(
                             "es-AR"
