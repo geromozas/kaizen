@@ -38,6 +38,8 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import HistoryIcon from "@mui/icons-material/History";
 import InfoIcon from "@mui/icons-material/Info";
 
+import FixClientData from "./FixClientData";
+
 import {
   deleteDoc,
   doc,
@@ -57,6 +59,9 @@ import ActivityStats from "../activities/ActivityStats";
 import MonthlyBillingManager from "./MonthlyBillingManager";
 import AccessTimeFilledIcon from "@mui/icons-material/AccessTimeFilled";
 import { ScheduleAssignmentModal } from "./ScheduleAssignmentModal ";
+
+import ResetDebts from "./ResetDebts";
+import RevertBilling from "./RevertBilling";
 
 const modalStyle = {
   position: "absolute",
@@ -781,6 +786,9 @@ const ClientsList = ({ clients = [], setIsChange }) => {
             activities={activities}
             setIsChange={setIsChange}
           />
+          {/* <RevertBilling setIsChange={setIsChange} />
+          <ResetDebts setIsChange={setIsChange} />
+          <FixClientData /> */}
           <Button
             variant="outlined"
             startIcon={<SettingsIcon />}
@@ -789,6 +797,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
           >
             Precios
           </Button>
+
           <Button
             variant="contained"
             onClick={() => handleOpenForm(null)}

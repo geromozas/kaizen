@@ -448,7 +448,6 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
               if (saldoFavor >= cuotaNueva) {
                 nuevoSaldoFavor = saldoFavor - cuotaNueva;
                 nuevaDeuda = 0;
-                // ✅ FIX: Verificar si tiene deuda anterior para determinar estado
                 nuevoEstado = nuevaDeudaAnterior > 0 ? "Deudor" : "Al día";
               } else {
                 nuevaDeuda = cuotaNueva - saldoFavor;
@@ -471,7 +470,6 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
               if (saldoFavor >= cuotaNueva) {
                 nuevoSaldoFavor = saldoFavor - cuotaNueva;
                 nuevaDeuda = 0;
-                // ✅ FIX: Verificar si tiene deuda anterior para determinar estado
                 nuevoEstado = nuevaDeudaAnterior > 0 ? "Deudor" : "Al día";
               } else {
                 nuevaDeuda = cuotaNueva - saldoFavor;
