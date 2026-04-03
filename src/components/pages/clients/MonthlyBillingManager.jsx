@@ -67,7 +67,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
   const calcularCuotaCliente = (
     client,
     activitiesList,
-    useCustomPrice = false
+    useCustomPrice = false,
   ) => {
     if (useCustomPrice && customPrices[client.id] !== undefined) {
       return customPrices[client.id];
@@ -88,8 +88,8 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
     // Actualizar la lista de actividades con el nuevo precio
     setUpdatedActivities((prev) =>
       prev.map((act) =>
-        act.id === activityId ? { ...act, valor: price } : act
-      )
+        act.id === activityId ? { ...act, valor: price } : act,
+      ),
     );
   };
 
@@ -182,7 +182,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
       const fechaVerificar = new Date(anioVerificar, mesVerificar - 1);
 
       // Si la fecha facturada es mayor o igual a la que queremos facturar, ya está pagado
-      return fechaFacturada >= fechaVerificar;
+      return fechaFacturada > fechaVerificar;
     }
 
     return false;
@@ -220,7 +220,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
           clientesExcluidos.push({
             ...client,
             razon: `Ya tiene facturado ${formatearMesLegible(
-              client.ultimoMesFacturado
+              client.ultimoMesFacturado,
             )}`,
           });
           return;
@@ -261,7 +261,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
         clientesExcluidos,
         totalAFacturar: clientesAFacturar.reduce(
           (sum, c) => sum + c.cuotaAFacturar,
-          0
+          0,
         ),
         mesFacturacion: mesParaFacturar,
       });
@@ -356,14 +356,14 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
   const getClientesSeleccionados = () => {
     if (!previewData) return [];
     return previewData.clientesAFacturar.filter(
-      (client) => selectedClients[client.id]
+      (client) => selectedClients[client.id],
     );
   };
 
   const getTotalSeleccionados = () => {
     return getClientesSeleccionados().reduce(
       (sum, c) => sum + (customPrices[c.id] || c.cuotaAFacturar),
-      0
+      0,
     );
   };
 
@@ -389,10 +389,10 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
         clientesSeleccionados.length
       }</strong> clientes</p>
       <p>Total nuevas cuotas: <strong>${totalSeleccionado.toLocaleString(
-        "es-AR"
+        "es-AR",
       )}</strong></p>
       <p>Mes a facturar: <strong>${formatearMesLegible(
-        mesParaFacturar
+        mesParaFacturar,
       )}</strong></p>
       ${
         mesAFacturar === "actual"
@@ -511,7 +511,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
         <p>✅ Clientes facturados: <strong>${procesados}</strong></p>
         ${errores > 0 ? `<p>⚠️ Errores: <strong>${errores}</strong></p>` : ""}
         <p>Total facturado: <strong>${totalSeleccionado.toLocaleString(
-          "es-AR"
+          "es-AR",
         )}</strong></p>
         <p>Mes: <strong>${formatearMesLegible(mesParaFacturar)}</strong></p>
       `,
@@ -533,7 +533,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
     ? previewData.clientesAFacturar.filter((client) =>
         `${client.name} ${client.lastName}`
           .toLowerCase()
-          .includes(searchTerm.toLowerCase())
+          .includes(searchTerm.toLowerCase()),
       )
     : [];
 
@@ -607,7 +607,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
                               onChange={(e) =>
                                 handleActivityPriceChange(
                                   activity.id,
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               InputProps={{
@@ -689,14 +689,14 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
                     value="actual"
                     control={<Radio />}
                     label={`Mes Actual (${formatearMesLegible(
-                      getMesActual()
+                      getMesActual(),
                     )})`}
                   />
                   <FormControlLabel
                     value="siguiente"
                     control={<Radio />}
                     label={`Mes Siguiente (${formatearMesLegible(
-                      getMesSiguiente(getMesActual())
+                      getMesSiguiente(getMesActual()),
                     )})`}
                   />
                 </RadioGroup>
@@ -776,7 +776,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
                           <TableCell padding="checkbox">
                             <Checkbox
                               checked={Object.values(selectedClients).every(
-                                (v) => v
+                                (v) => v,
                               )}
                               onChange={toggleSelectAll}
                               size="small"
@@ -837,7 +837,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
                               {client.saldoFavor > 0 && (
                                 <Chip
                                   label={`Saldo: ${client.saldoFavor.toLocaleString(
-                                    "es-AR"
+                                    "es-AR",
                                   )}`}
                                   size="small"
                                   color="success"
@@ -864,7 +864,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
                                 >
                                   $
                                   {client.deudaAnteriorTotal.toLocaleString(
-                                    "es-AR"
+                                    "es-AR",
                                   )}
                                 </Typography>
                               </TableCell>
@@ -885,7 +885,7 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
                                     onChange={(e) =>
                                       handlePriceChange(
                                         client.id,
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     sx={{ width: 100 }}

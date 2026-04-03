@@ -203,13 +203,13 @@ const ClientsList = ({ clients = [], setIsChange }) => {
     } else if (deudaTotal > 0) {
       if (client.deudaAnterior && client.deudaAnterior > 0) {
         aviso = `💰 Deuda total: $${deudaTotal.toLocaleString(
-          "es-AR"
+          "es-AR",
         )} (Meses anteriores: $${client.deudaAnterior.toLocaleString(
-          "es-AR"
+          "es-AR",
         )} + Mes actual: $${(client.debt || 0).toLocaleString("es-AR")})`;
       } else {
         aviso = `💰 Deuda mes actual: $${(client.debt || 0).toLocaleString(
-          "es-AR"
+          "es-AR",
         )}`;
       }
     } else {
@@ -252,7 +252,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
       schedulesSnap.docs.forEach((doc) => {
         const scheduleData = doc.data();
         const clientInSchedule = scheduleData.clients?.find(
-          (c) => c.id === client.id
+          (c) => c.id === client.id,
         );
 
         if (clientInSchedule) {
@@ -310,27 +310,27 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         if (saldoFavorActual > 0) {
           if (saldoFavorActual >= montoTotal) {
             avisoDetallado = `✅ El saldo a favor ($${saldoFavorActual.toLocaleString(
-              "es-AR"
+              "es-AR",
             )}) cubre los ${mesesAdelantados} mes(es). Sobrante: $${(
               saldoFavorActual - montoTotal
             ).toLocaleString("es-AR")}`;
           } else {
             montoAPagar = montoTotal - saldoFavorActual;
             avisoDetallado = `💰 Total: $${montoTotal.toLocaleString(
-              "es-AR"
+              "es-AR",
             )} - Saldo: $${saldoFavorActual.toLocaleString(
-              "es-AR"
+              "es-AR",
             )} = A pagar: $${montoAPagar.toLocaleString("es-AR")}`;
           }
         } else {
           avisoDetallado = `📅 ${mesesAdelantados} mes(es) x $${precioCuota.toLocaleString(
-            "es-AR"
+            "es-AR",
           )} = $${montoTotal.toLocaleString("es-AR")}`;
         }
 
         if (monto !== montoAPagar && montoAPagar > 0) {
           avisoDetallado += `\n💡 Sugerido: $${montoAPagar.toLocaleString(
-            "es-AR"
+            "es-AR",
           )}`;
         }
       } else {
@@ -345,24 +345,24 @@ const ClientsList = ({ clients = [], setIsChange }) => {
           } else {
             const diferencia = deudaTotal - monto;
             avisoDetallado = `✅ Se cobrará sin deuda. Cliente quedará "Al día" (se le descuenta $${diferencia.toLocaleString(
-              "es-AR"
+              "es-AR",
             )})`;
           }
         } else {
           if (saldoFavorActual > 0) {
             const nuevoSaldoFavor = saldoFavorActual + monto;
             avisoDetallado = `💚 Nuevo saldo a favor: $${nuevoSaldoFavor.toLocaleString(
-              "es-AR"
+              "es-AR",
             )}`;
           } else if (deudaTotal > 0) {
             if (monto > deudaTotal) {
               const saldoFavor = monto - deudaTotal;
               avisoDetallado = `🎉 Cubre toda la deuda ($${deudaTotal.toLocaleString(
-                "es-AR"
+                "es-AR",
               )}) + $${saldoFavor.toLocaleString("es-AR")} a favor`;
             } else if (monto === deudaTotal) {
               avisoDetallado = `✅ Cubre exactamente toda la deuda ($${deudaTotal.toLocaleString(
-                "es-AR"
+                "es-AR",
               )})`;
             } else {
               const deudaRestante = deudaTotal - monto;
@@ -371,31 +371,31 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                 if (monto >= deudaAnterior) {
                   const sobrante = monto - deudaAnterior;
                   avisoDetallado = `✅ Cubre deuda anterior completa ($${deudaAnterior.toLocaleString(
-                    "es-AR"
+                    "es-AR",
                   )}) + $${sobrante.toLocaleString(
-                    "es-AR"
+                    "es-AR",
                   )} de mes actual. Restante: $${deudaRestante.toLocaleString(
-                    "es-AR"
+                    "es-AR",
                   )}`;
                 } else {
                   const nuevaDeudaAnterior = deudaAnterior - monto;
                   avisoDetallado = `⚠️ Se aplica a deuda anterior. Nueva deuda anterior: $${nuevaDeudaAnterior.toLocaleString(
-                    "es-AR"
+                    "es-AR",
                   )}. Total restante: $${deudaRestante.toLocaleString(
-                    "es-AR"
+                    "es-AR",
                   )}`;
                 }
               } else {
                 avisoDetallado = `⚠️ Cubre $${monto.toLocaleString(
-                  "es-AR"
+                  "es-AR",
                 )} de deuda. Restante: $${deudaRestante.toLocaleString(
-                  "es-AR"
+                  "es-AR",
                 )}`;
               }
             }
           } else {
             avisoDetallado = `💚 Generará saldo a favor de $${monto.toLocaleString(
-              "es-AR"
+              "es-AR",
             )}`;
           }
         }
@@ -442,9 +442,9 @@ const ClientsList = ({ clients = [], setIsChange }) => {
           icon: "warning",
           title: "Monto insuficiente",
           text: `Para ${mesesAdelantados} mes(es) necesitas pagar al menos $${montoFaltante.toLocaleString(
-            "es-AR"
+            "es-AR",
           )} (considerando saldo a favor de $${saldoFavorActual.toLocaleString(
-            "es-AR"
+            "es-AR",
           )})`,
         });
         return;
@@ -461,10 +461,10 @@ const ClientsList = ({ clients = [], setIsChange }) => {
       const ultimoMesPagado = new Date(
         fechaInicio.getFullYear(),
         fechaInicio.getMonth() + mesesAdelantados - 1,
-        1
+        1,
       );
       const ultimoMesFacturado = `${ultimoMesPagado.getFullYear()}-${String(
-        ultimoMesPagado.getMonth() + 1
+        ultimoMesPagado.getMonth() + 1,
       ).padStart(2, "0")}`;
 
       const pagoFinal = {
@@ -511,7 +511,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
           html: `
             <p>✅ ${mesesAdelantados} mes(es) pagado(s)</p>
             <p>📅 Cobertura hasta: ${new Date(
-              ultimoMesFacturado + "-01"
+              ultimoMesFacturado + "-01",
             ).toLocaleDateString("es-AR", {
               year: "numeric",
               month: "long",
@@ -519,7 +519,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
             ${
               nuevoSaldoFavor > 0
                 ? `<p>💚 Saldo a favor: $${nuevoSaldoFavor.toLocaleString(
-                    "es-AR"
+                    "es-AR",
                   )}</p>`
                 : ""
             }
@@ -614,6 +614,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         deudaAnterior: nuevaDeudaAnterior,
         saldoFavor: nuevoSaldoFavor,
         estado: nuevoEstado,
+        ultimoMesFacturado: mesPago,
       };
 
       try {
@@ -855,8 +856,8 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                         client.estado === "Deudor"
                           ? "red"
                           : client.estado === "Inactivo"
-                          ? "goldenrod"
-                          : "green",
+                            ? "goldenrod"
+                            : "green",
                       fontWeight: "bold",
                       cursor: "pointer",
                       fontSize: "0.875rem",
@@ -897,9 +898,9 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                       {tieneDeudaAnterior && (
                         <Tooltip
                           title={`Deuda anterior: ${client.deudaAnterior.toLocaleString(
-                            "es-AR"
+                            "es-AR",
                           )} | Mes actual: ${(client.debt || 0).toLocaleString(
-                            "es-AR"
+                            "es-AR",
                           )}`}
                           arrow
                         >
@@ -1067,7 +1068,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                 <Typography variant="caption" display="block">
                   <strong>Precio por mes:</strong> $
                   {getPrecioCuotaCliente(clientSelected).toLocaleString(
-                    "es-AR"
+                    "es-AR",
                   )}
                 </Typography>
                 <Typography variant="caption" display="block">
@@ -1097,7 +1098,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                         0,
                         getPrecioCuotaCliente(clientSelected) *
                           mesesAdelantados -
-                          clientSelected.saldoFavor
+                          clientSelected.saldoFavor,
                       ).toLocaleString("es-AR")}
                     </Typography>
                   </>
@@ -1116,9 +1117,9 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                 avisoSaldo.includes("condonan")
                   ? "success"
                   : avisoSaldo.includes("Restante") ||
-                    avisoSaldo.includes("anterior")
-                  ? "warning"
-                  : "info"
+                      avisoSaldo.includes("anterior")
+                    ? "warning"
+                    : "info"
               }
               sx={{ mb: 2, fontSize: "0.8rem" }}
             >
@@ -1211,8 +1212,8 @@ const ClientsList = ({ clients = [], setIsChange }) => {
               {tipoPago === "adelantado"
                 ? "Pagar Adelantado"
                 : cobrarSinDeuda
-                ? "Cobrar sin Deuda"
-                : "Registrar"}
+                  ? "Cobrar sin Deuda"
+                  : "Registrar"}
             </Button>
           </Box>
         </Box>
@@ -1271,7 +1272,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                         <strong>Fecha de inicio:</strong>{" "}
                         {clientSelected.fechaInicio
                           ? new Date(
-                              clientSelected.fechaInicio
+                              clientSelected.fechaInicio,
                             ).toLocaleDateString("es-ES")
                           : "No especificada"}
                       </Typography>
@@ -1299,15 +1300,15 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                             clientSelected.estado === "Deudor"
                               ? "#ffebee"
                               : clientSelected.estado === "Al día"
-                              ? "#e8f5e9"
-                              : "#fff3e0",
+                                ? "#e8f5e9"
+                                : "#fff3e0",
                           borderRadius: 1,
                           border: `2px solid ${
                             clientSelected.estado === "Deudor"
                               ? "#ef5350"
                               : clientSelected.estado === "Al día"
-                              ? "#66bb6a"
-                              : "#ffa726"
+                                ? "#66bb6a"
+                                : "#ffa726"
                           }`,
                         }}
                       >
@@ -1319,8 +1320,8 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                               clientSelected.estado === "Deudor"
                                 ? "#c62828"
                                 : clientSelected.estado === "Al día"
-                                ? "#2e7d32"
-                                : "#ef6c00",
+                                  ? "#2e7d32"
+                                  : "#ef6c00",
                             textAlign: "center",
                           }}
                         >
@@ -1372,7 +1373,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                               <Typography variant="body2" color="warning.main">
                                 📆 <strong>Mes actual:</strong> $
                                 {(clientSelected.debt || 0).toLocaleString(
-                                  "es-AR"
+                                  "es-AR",
                                 )}
                               </Typography>
                             </Box>
@@ -1421,7 +1422,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                           >
                             💚 <strong>Saldo a favor:</strong> $
                             {(clientSelected.saldoFavor || 0).toLocaleString(
-                              "es-AR"
+                              "es-AR",
                             )}
                           </Typography>
                         </Box>
@@ -1440,7 +1441,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                         <Typography variant="body2">
                           <strong>Último mes facturado:</strong>{" "}
                           {new Date(
-                            clientSelected.ultimoMesFacturado + "-01"
+                            clientSelected.ultimoMesFacturado + "-02",
                           ).toLocaleDateString("es-AR", {
                             year: "numeric",
                             month: "long",
@@ -1470,7 +1471,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                           <Typography variant="caption" color="text.secondary">
                             Cubierto hasta:{" "}
                             {new Date(
-                              clientSelected.ultimoMesFacturado + "-01"
+                              clientSelected.ultimoMesFacturado + "-02",
                             ).toLocaleDateString("es-AR", {
                               year: "numeric",
                               month: "long",
@@ -1512,13 +1513,13 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                               <Chip
                                 key={index}
                                 label={`${summary.day}: ${summary.hours.join(
-                                  ", "
+                                  ", ",
                                 )}`}
                                 variant="outlined"
                                 size="small"
                                 sx={{ fontSize: "0.7rem" }}
                               />
-                            )
+                            ),
                           )}
                         </Box>
                       </Box>
@@ -1534,7 +1535,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                           .filter(
                             (schedule) =>
                               new Date(schedule.date) >=
-                              new Date().setHours(0, 0, 0, 0)
+                              new Date().setHours(0, 0, 0, 0),
                           )
                           .slice(0, 5)
                           .map((schedule, index) => (
@@ -1599,7 +1600,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                                     (clientSchedules.filter((s) => s.attended)
                                       .length /
                                       clientSchedules.length) *
-                                      100
+                                      100,
                                   )
                                 : 0}
                               %
