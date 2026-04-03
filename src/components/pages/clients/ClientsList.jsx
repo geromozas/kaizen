@@ -885,7 +885,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                     <Box
                       sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
                     >
-                      <Typography
+                      {/* <Typography
                         variant="body2"
                         sx={{
                           color: deudaTotal > 0 ? "error.main" : "success.main",
@@ -894,6 +894,23 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                         }}
                       >
                         ${deudaTotal.toLocaleString("es-AR")}
+                      </Typography> */}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color:
+                            client.estado === "Inactivo"
+                              ? "goldenrod"
+                              : deudaTotal > 0
+                                ? "error.main"
+                                : "success.main",
+                          fontWeight: "bold",
+                          fontSize: "0.875rem",
+                        }}
+                      >
+                        {client.estado === "Inactivo"
+                          ? "INACTIVO"
+                          : `$${deudaTotal.toLocaleString("es-AR")}`}
                       </Typography>
                       {tieneDeudaAnterior && (
                         <Tooltip

@@ -167,9 +167,8 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
       month: "long",
     });
   };
-
   const clienteTieneMesPagadoAdelantado = (client, mesAVerificar) => {
-    // Si tiene último mes facturado y es igual o posterior al mes que queremos facturar
+    // Si tiene último mes facturado igual o posterior al mes que queremos facturar, ya está cubierto
     if (client.ultimoMesFacturado) {
       const [anioFacturado, mesFacturado] = client.ultimoMesFacturado
         .split("-")
@@ -181,13 +180,11 @@ const MonthlyBillingManager = ({ activities, setIsChange }) => {
       const fechaFacturada = new Date(anioFacturado, mesFacturado - 1);
       const fechaVerificar = new Date(anioVerificar, mesVerificar - 1);
 
-      // Si la fecha facturada es mayor o igual a la que queremos facturar, ya está pagado
-      return fechaFacturada > fechaVerificar;
+      return fechaFacturada >= fechaVerificar;
     }
 
     return false;
   };
-
   const generarPreview = async () => {
     setIsProcessing(true);
     try {
