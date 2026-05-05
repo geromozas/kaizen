@@ -1,3 +1,9 @@
+/**
+ * FixClientData.jsx
+ * Corrige clientes cuyo ultimoMesFacturado quedó menor al fechaFinCobertura
+ * de su pago adelantado (bug de timezone en cálculo de fecha).
+ * Lógica: solo sube el mes, nunca lo baja. Una vez ejecutado, podés removerlo.
+ */
 import { useState } from "react";
 import {
   Button,
@@ -11,173 +17,129 @@ import {
   LinearProgress,
   List,
   ListItem,
+  ListItemText,
   Chip,
-  Paper,
 } from "@mui/material";
 import BuildIcon from "@mui/icons-material/Build";
 import { db } from "../../../firebaseConfig";
 import { collection, getDocs, doc, writeBatch } from "firebase/firestore";
 import Swal from "sweetalert2";
 
+const formatMes = (mesStr) => {
+  if (!mesStr) return "—";
+  const [anio, mes] = mesStr.split("-");
+  return new Date(parseInt(anio), parseInt(mes) - 1, 15).toLocaleDateString(
+    "es-AR",
+    { year: "numeric", month: "long" },
+  );
+};
+
 const FixClientData = () => {
   const [open, setOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [previewData, setPreviewData] = useState(null);
-  const [hasRunFix, setHasRunFix] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isFixing, setIsFixing] = useState(false);
+  const [clientesConError, setClientesConError] = useState([]);
+  const [analyzed, setAnalyzed] = useState(false);
 
-  const calcularEstadoCorrecto = (debt, deudaAnterior, saldoFavor) => {
-    const deudaTotal = (debt || 0) + (deudaAnterior || 0);
-
-    // SI TIENE DEUDA (debt o deudaAnterior), debe ser DEUDOR
-    if (deudaTotal > 0) {
-      return "Deudor";
-    } else if (saldoFavor > 0) {
-      return "Saldo a favor";
-    } else {
-      return "Al día";
-    }
-  };
-  const analizarClientes = async () => {
-    setIsProcessing(true);
+  const handleAnalyze = async () => {
+    setIsAnalyzing(true);
+    setAnalyzed(false);
+    setClientesConError([]);
     try {
-      const clientsRef = collection(db, "clients");
-      const clientsSnap = await getDocs(clientsRef);
+      const [clientsSnap, paymentsSnap] = await Promise.all([
+        getDocs(collection(db, "clients")),
+        getDocs(collection(db, "payments")),
+      ]);
 
-      const clientesConProblemas = [];
-      const clientesCorrectos = [];
+      const payments = paymentsSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
 
-      clientsSnap.docs.forEach((docSnap) => {
-        const client = { id: docSnap.id, ...docSnap.data() };
-
-        const debt = client.debt || 0;
-        const deudaAnterior = client.deudaAnterior || 0;
-        const saldoFavor = client.saldoFavor || 0;
-        const estadoActual = client.estado;
-        const deudaTotal = debt + deudaAnterior;
-
-        const estadoCorrecto = calcularEstadoCorrecto(
-          debt,
-          deudaAnterior,
-          saldoFavor
-        );
-
-        const tieneProblema =
-          estadoActual !== estadoCorrecto ||
-          (estadoActual === "Inactivo" && deudaTotal > 0);
-
-        if (tieneProblema) {
-          clientesConProblemas.push({
-            ...client,
-            estadoActual,
-            estadoCorrecto,
-            deudaTotal,
-            problema:
-              estadoActual === "Inactivo" && deudaTotal > 0
-                ? "Inactivo con deuda"
-                : "Estado incorrecto",
-          });
-        } else {
-          clientesCorrectos.push(client);
+      // Calcular el fechaFinCobertura más alto por cliente (solo pagos adelantados)
+      const coberturaPorCliente = {};
+      payments.forEach((p) => {
+        if (p.tipoPago !== "adelantado") return;
+        const clientId = p.alumno?.id;
+        const fin = p.fechaFinCobertura; // "YYYY-MM"
+        if (!clientId || !fin) return;
+        if (
+          !coberturaPorCliente[clientId] ||
+          fin > coberturaPorCliente[clientId]
+        ) {
+          coberturaPorCliente[clientId] = fin;
         }
       });
 
-      setPreviewData({
-        clientesConProblemas,
-        clientesCorrectos,
-        total: clientsSnap.docs.length,
+      const errores = [];
+      clientsSnap.docs.forEach((docSnap) => {
+        const client = { id: docSnap.id, ...docSnap.data() };
+        const coberturaReal = coberturaPorCliente[client.id];
+        if (!coberturaReal) return; // sin pagos adelantados → ok
+
+        const mesActual = client.ultimoMesFacturado || "";
+        // Error solo si el mes guardado es MENOR al fin de cobertura real
+        if (mesActual < coberturaReal) {
+          errores.push({
+            id: client.id,
+            name: `${client.name} ${client.lastName}`,
+            ultimoMesActual: mesActual,
+            ultimoMesCorrecto: coberturaReal,
+          });
+        }
       });
+
+      setClientesConError(errores);
+      setAnalyzed(true);
     } catch (error) {
-      console.error("Error al analizar clientes:", error);
+      console.error("Error analizando:", error);
       Swal.fire({
         icon: "error",
-        title: "Error",
-        text: "No se pudo analizar los datos de clientes",
+        title: "Error al analizar",
+        text: error.message,
       });
     } finally {
-      setIsProcessing(false);
+      setIsAnalyzing(false);
     }
   };
 
-  const handleOpen = async () => {
-    setOpen(true);
-    setHasRunFix(false);
-    await analizarClientes();
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-    setPreviewData(null);
-  };
-
-  const ejecutarCorreccion = async () => {
-    if (!previewData || previewData.clientesConProblemas.length === 0) {
-      Swal.fire({
-        icon: "info",
-        title: "Sin problemas",
-        text: "No hay clientes que necesiten corrección",
-      });
-      return;
-    }
-
+  const handleFix = async () => {
     const result = await Swal.fire({
-      title: "¿Confirmar corrección?",
-      html: `
-        <p>Se corregirán <strong>${previewData.clientesConProblemas.length}</strong> clientes</p>
-        <p style="color: #f57c00;"><strong>⚠️ Esta acción actualizará los estados en Firebase</strong></p>
-      `,
+      title: "¿Corregir datos?",
+      html: `Se actualizará <strong>ultimoMesFacturado</strong> en ${clientesConError.length} cliente(s).`,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Sí, corregir",
       cancelButtonText: "Cancelar",
-      confirmButtonColor: "#2196f3",
     });
-
     if (!result.isConfirmed) return;
 
-    setIsProcessing(true);
-
+    setIsFixing(true);
     try {
       const batch = writeBatch(db);
-      let procesados = 0;
-      let errores = 0;
-
-      for (const client of previewData.clientesConProblemas) {
-        try {
-          const clientRef = doc(db, "clients", client.id);
-          batch.update(clientRef, {
-            estado: client.estadoCorrecto,
-          });
-          procesados++;
-        } catch (error) {
-          console.error(`Error al corregir cliente ${client.name}:`, error);
-          errores++;
-        }
-      }
-
+      clientesConError.forEach(({ id, ultimoMesCorrecto }) => {
+        batch.update(doc(db, "clients", id), {
+          ultimoMesFacturado: ultimoMesCorrecto,
+        });
+      });
       await batch.commit();
-      setHasRunFix(true);
-
       Swal.fire({
         icon: "success",
-        title: "Corrección completada",
-        html: `
-          <p>✅ Clientes corregidos: <strong>${procesados}</strong></p>
-          ${errores > 0 ? `<p>⚠️ Errores: <strong>${errores}</strong></p>` : ""}
-          <p style="color: #4caf50;">Los estados ahora reflejan correctamente las deudas</p>
-        `,
-        timer: 4000,
+        title: "¡Datos corregidos!",
+        timer: 2500,
+        showConfirmButton: false,
       });
-
-      await analizarClientes();
+      setClientesConError([]);
+      setAnalyzed(false);
+      setOpen(false);
     } catch (error) {
-      console.error("Error en corrección de datos:", error);
       Swal.fire({
         icon: "error",
-        title: "Error",
-        text: "Hubo un error al corregir los datos",
+        title: "Error al corregir",
+        text: error.message,
       });
     } finally {
-      setIsProcessing(false);
+      setIsFixing(false);
     }
   };
 
@@ -185,186 +147,92 @@ const FixClientData = () => {
     <>
       <Button
         variant="outlined"
-        startIcon={<BuildIcon />}
-        onClick={handleOpen}
-        size="small"
         color="warning"
-        sx={{ ml: 1 }}
+        size="small"
+        startIcon={<BuildIcon />}
+        onClick={() => {
+          setOpen(true);
+          handleAnalyze();
+        }}
       >
         Corregir Datos
       </Button>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <BuildIcon />
-            <Typography variant="h6">
-              Corrección de Estados de Clientes
-            </Typography>
-          </Box>
-        </DialogTitle>
-
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>🔧 Corrección de Datos de Clientes</DialogTitle>
         <DialogContent>
-          {isProcessing && <LinearProgress sx={{ mb: 2 }} />}
-
+          {(isAnalyzing || isFixing) && <LinearProgress sx={{ mb: 2 }} />}
           <Alert severity="info" sx={{ mb: 2 }}>
-            Esta herramienta corrige los estados de los clientes que no
-            coinciden con sus deudas reales.
+            Detecta clientes cuyo <strong>último mes facturado</strong> es menor
+            al mes de fin de cobertura de sus pagos adelantados. Solo corrige
+            hacia adelante, nunca retrocede.
           </Alert>
 
-          {previewData && (
-            <>
-              <Box sx={{ mb: 3 }}>
-                <Paper sx={{ p: 2, bgcolor: "#f5f5f5" }}>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ fontWeight: "bold", mb: 2 }}
-                  >
-                    Resumen del Análisis
-                  </Typography>
-                  <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                    <Chip
-                      label={`Total: ${previewData.total}`}
-                      color="default"
-                    />
-                    <Chip
-                      label={`Con problemas: ${previewData.clientesConProblemas.length}`}
-                      color={
-                        previewData.clientesConProblemas.length > 0
-                          ? "error"
-                          : "default"
-                      }
-                    />
-                    <Chip
-                      label={`Correctos: ${previewData.clientesCorrectos.length}`}
-                      color="success"
-                    />
-                  </Box>
-                </Paper>
-              </Box>
-
-              {previewData.clientesConProblemas.length > 0 ? (
-                <Box>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ fontWeight: "bold", mb: 1, color: "error.main" }}
-                  >
-                    Clientes que necesitan corrección:
-                  </Typography>
-                  <Box
-                    sx={{
-                      maxHeight: 400,
-                      overflow: "auto",
-                      border: "1px solid #e0e0e0",
-                      borderRadius: 1,
-                      p: 1,
-                    }}
-                  >
-                    <List dense>
-                      {previewData.clientesConProblemas.map((client) => (
-                        <ListItem
-                          key={client.id}
-                          sx={{
-                            bgcolor: "#ffebee",
-                            mb: 1,
-                            borderRadius: 1,
-                            flexDirection: "column",
-                            alignItems: "flex-start",
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              width: "100%",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Typography
-                              variant="body1"
-                              sx={{ fontWeight: "bold" }}
-                            >
-                              {client.name} {client.lastName}
-                            </Typography>
-                            <Chip
-                              label={client.problema}
-                              size="small"
-                              color="error"
-                              sx={{ fontSize: "0.7rem" }}
-                            />
-                          </Box>
-                          <Box sx={{ mt: 1, width: "100%" }}>
-                            <Typography variant="caption" display="block">
-                              <strong>Deuda mes actual:</strong> $
-                              {(client.debt || 0).toLocaleString("es-AR")}
-                            </Typography>
-                            <Typography variant="caption" display="block">
-                              <strong>Deuda anterior:</strong> $
-                              {(client.deudaAnterior || 0).toLocaleString(
-                                "es-AR"
-                              )}
-                            </Typography>
-                            <Typography variant="caption" display="block">
-                              <strong>Deuda total:</strong> $
-                              {client.deudaTotal.toLocaleString("es-AR")}
-                            </Typography>
-                            {client.saldoFavor > 0 && (
-                              <Typography
-                                variant="caption"
-                                display="block"
-                                color="success.main"
-                              >
-                                <strong>Saldo a favor:</strong> $
-                                {client.saldoFavor.toLocaleString("es-AR")}
-                              </Typography>
-                            )}
-                            <Box sx={{ mt: 1, display: "flex", gap: 2 }}>
-                              <Chip
-                                label={`Actual: ${client.estadoActual}`}
-                                size="small"
-                                color="error"
-                                sx={{ fontSize: "0.7rem" }}
-                              />
-                              <Chip
-                                label={`Correcto: ${client.estadoCorrecto}`}
-                                size="small"
-                                color="success"
-                                sx={{ fontSize: "0.7rem" }}
-                              />
-                            </Box>
-                          </Box>
-                        </ListItem>
-                      ))}
-                    </List>
-                  </Box>
-                </Box>
-              ) : (
-                <Alert severity="success">
-                  {hasRunFix
-                    ? "✅ Corrección completada. Todos los clientes tienen estados correctos."
-                    : "✅ Todos los clientes tienen estados correctos. No se necesita corrección."}
+          {analyzed &&
+            !isAnalyzing &&
+            (clientesConError.length === 0 ? (
+              <Alert severity="success">
+                ✅ Sin errores. Todos los datos son correctos.
+              </Alert>
+            ) : (
+              <>
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  <strong>{clientesConError.length}</strong> cliente(s) con mes
+                  facturado menor al fin de cobertura de su pago adelantado:
                 </Alert>
-              )}
-            </>
-          )}
+                <List dense>
+                  {clientesConError.map((c) => (
+                    <ListItem
+                      key={c.id}
+                      sx={{ bgcolor: "#fff3e0", mb: 0.5, borderRadius: 1 }}
+                    >
+                      <ListItemText
+                        primary={<strong>{c.name}</strong>}
+                        secondary={
+                          <Box>
+                            <Typography variant="caption" color="error">
+                              ❌ Actual: {formatMes(c.ultimoMesActual)}
+                            </Typography>
+                            <br />
+                            <Typography variant="caption" color="success.main">
+                              ✅ Correcto: {formatMes(c.ultimoMesCorrecto)}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                      <Chip label="Corregir" color="warning" size="small" />
+                    </ListItem>
+                  ))}
+                </List>
+              </>
+            ))}
         </DialogContent>
-
         <DialogActions>
-          <Button onClick={handleClose} disabled={isProcessing}>
+          <Button onClick={() => setOpen(false)} disabled={isFixing}>
             Cerrar
           </Button>
-          {previewData &&
-            previewData.clientesConProblemas.length > 0 &&
-            !hasRunFix && (
-              <Button
-                onClick={ejecutarCorreccion}
-                variant="contained"
-                color="warning"
-                disabled={isProcessing}
-              >
-                Ejecutar Corrección
-              </Button>
-            )}
+          <Button
+            onClick={handleAnalyze}
+            disabled={isAnalyzing || isFixing}
+            variant="outlined"
+          >
+            Re-analizar
+          </Button>
+          {analyzed && clientesConError.length > 0 && (
+            <Button
+              onClick={handleFix}
+              variant="contained"
+              color="warning"
+              disabled={isFixing}
+            >
+              Corregir {clientesConError.length} cliente(s)
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </>

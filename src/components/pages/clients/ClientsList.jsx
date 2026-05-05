@@ -1,1729 +1,3 @@
-// import Table from "@mui/material/Table";
-// import TableBody from "@mui/material/TableBody";
-// import TableCell from "@mui/material/TableCell";
-// import TableContainer from "@mui/material/TableContainer";
-// import TableHead from "@mui/material/TableHead";
-// import TableRow from "@mui/material/TableRow";
-// import Paper from "@mui/material/Paper";
-// import {
-//   Button,
-//   IconButton,
-//   TextField,
-//   MenuItem,
-//   Select,
-//   Typography,
-//   Chip,
-//   Box,
-//   Modal,
-//   Alert,
-//   Accordion,
-//   AccordionSummary,
-//   AccordionDetails,
-//   Grid,
-//   Divider,
-//   RadioGroup,
-//   FormControlLabel,
-//   Radio,
-//   Tooltip,
-//   Checkbox,
-// } from "@mui/material";
-// import DeleteIcon from "@mui/icons-material/Delete";
-// import EditIcon from "@mui/icons-material/Edit";
-// import SettingsIcon from "@mui/icons-material/Settings";
-// import AccessTimeIcon from "@mui/icons-material/AccessTime";
-// import PaymentIcon from "@mui/icons-material/Payment";
-// import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-// import PersonIcon from "@mui/icons-material/Person";
-// import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-// import HistoryIcon from "@mui/icons-material/History";
-// import InfoIcon from "@mui/icons-material/Info";
-
-// import FixClientData from "./FixClientData";
-
-// import {
-//   deleteDoc,
-//   doc,
-//   collection,
-//   getDocs,
-//   addDoc,
-//   updateDoc,
-// } from "firebase/firestore";
-// import { useState, useEffect } from "react";
-// import { useActivities } from "../activities/useActivities";
-// import { db } from "../../../firebaseConfig";
-// import { ClientForm } from "./ClientForm";
-// import { ActivityPricesManager } from "../activities/ActivityPricesManager";
-// import { Timestamp } from "firebase/firestore";
-// import Swal from "sweetalert2";
-// import ActivityStats from "../activities/ActivityStats";
-// import MonthlyBillingManager from "./MonthlyBillingManager";
-// import AccessTimeFilledIcon from "@mui/icons-material/AccessTimeFilled";
-// import { ScheduleAssignmentModal } from "./ScheduleAssignmentModal ";
-
-// // import ResetDebts from "./ResetDebts";
-// // import RevertBilling from "./RevertBilling";
-
-// const modalStyle = {
-//   position: "absolute",
-//   top: "50%",
-//   left: "50%",
-//   transform: "translate(-50%, -50%)",
-//   width: "90vw",
-//   maxWidth: 500,
-//   maxHeight: "85vh",
-//   bgcolor: "background.paper",
-//   borderRadius: 2,
-//   boxShadow: 24,
-//   p: 2,
-//   overflow: "auto",
-// };
-
-// const profileModalStyle = {
-//   position: "absolute",
-//   top: "50%",
-//   left: "50%",
-//   transform: "translate(-50%, -50%)",
-//   width: "90vw",
-//   maxWidth: 500,
-//   maxHeight: "90vh",
-//   bgcolor: "background.paper",
-//   borderRadius: 2,
-//   boxShadow: 24,
-//   p: 2,
-//   overflow: "auto",
-// };
-
-// const daysOfWeek = [
-//   { key: "sunday", label: "Dom", value: 0 },
-//   { key: "monday", label: "Lun", value: 1 },
-//   { key: "tuesday", label: "Mar", value: 2 },
-//   { key: "wednesday", label: "Mié", value: 3 },
-//   { key: "thursday", label: "Jue", value: 4 },
-//   { key: "friday", label: "Vie", value: 5 },
-//   { key: "saturday", label: "Sáb", value: 6 },
-// ];
-
-// const ClientsList = ({ clients = [], setIsChange }) => {
-//   const [openForm, setOpenForm] = useState(false);
-//   const [openProfile, setOpenProfile] = useState(false);
-//   const [openPricesManager, setOpenPricesManager] = useState(false);
-//   const [openPaymentModal, setOpenPaymentModal] = useState(false);
-//   const [clientSelected, setClientSelected] = useState(null);
-//   const [actividadFilter, setActividadFilter] = useState("");
-//   const [searchTerm, setSearchTerm] = useState("");
-//   const [clientSchedules, setClientSchedules] = useState([]);
-//   const [loadingSchedules, setLoadingSchedules] = useState(false);
-//   const [avisoSaldo, setAvisoSaldo] = useState("");
-
-//   const [tipoPago, setTipoPago] = useState("normal");
-//   const [mesesAdelantados, setMesesAdelantados] = useState(1);
-//   const [fechaInicioAdelantado, setFechaInicioAdelantado] = useState("");
-//   const [cobrarSinDeuda, setCobrarSinDeuda] = useState(false);
-
-//   const [openScheduleAssignment, setOpenScheduleAssignment] = useState(false);
-//   const [clientForSchedule, setClientForSchedule] = useState(null);
-
-//   const [isSubmitting, setIsSubmitting] = useState(false);
-
-//   // Actividad seleccionada para el pago adelantado (puede diferir de la del cliente)
-//   const [actividadPago, setActividadPago] = useState("");
-
-//   const [nuevoPago, setNuevoPago] = useState({
-//     concepto: "",
-//     metodo: "",
-//     monto: "",
-//     fecha: new Date().toLocaleDateString("es-AR"),
-//     hora: new Date().toLocaleTimeString("es-AR", {
-//       hour12: false,
-//       hour: "2-digit",
-//       minute: "2-digit",
-//     }),
-//   });
-
-//   const { activities = [], reloadActivities } = useActivities();
-
-//   const handleCloseForm = () => setOpenForm(false);
-//   const handleCloseProfile = () => {
-//     setOpenProfile(false);
-//     setClientSchedules([]);
-//   };
-
-//   const handleClosePricesManager = () => setOpenPricesManager(false);
-
-//   const handleClosePaymentModal = () => {
-//     setIsSubmitting(false);
-//     setOpenPaymentModal(false);
-//     setClientSelected(null);
-//     setTipoPago("normal");
-//     setMesesAdelantados(1);
-//     setFechaInicioAdelantado("");
-//     setCobrarSinDeuda(false);
-//     setActividadPago("");
-//     setNuevoPago({
-//       concepto: "",
-//       metodo: "",
-//       monto: "",
-//       fecha: new Date().toLocaleDateString("es-AR"),
-//       hora: new Date().toLocaleTimeString("es-AR", {
-//         hour12: false,
-//         hour: "2-digit",
-//         minute: "2-digit",
-//       }),
-//     });
-//     setAvisoSaldo("");
-//   };
-
-//   const handleOpenForm = (client) => {
-//     setClientSelected(client);
-//     setOpenForm(true);
-//   };
-
-//   // ✅ Acepta actividadOverride para calcular el precio de cualquier actividad
-//   // manteniendo la proporción del cliente
-//   const getPrecioCuotaCliente = (client, actividadOverride = null) => {
-//     const actividadLabel = actividadOverride || client.actividad;
-//     const actividad = activities.find((a) => a.label === actividadLabel);
-//     if (!actividad) return 0;
-//     return Math.round((actividad.valor * (client.proporcion || 1)) / 100) * 100;
-//   };
-
-//   const calcularFechaInicioAdelantado = (client) => {
-//     const hoy = new Date();
-//     const ultimoMesFacturado = client.ultimoMesFacturado;
-
-//     if (ultimoMesFacturado) {
-//       const [anio, mes] = ultimoMesFacturado.split("-").map(Number);
-//       const siguienteMes = new Date(anio, mes, 1);
-//       return siguienteMes.toISOString().split("T")[0];
-//     } else {
-//       const mesActual = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-//       return mesActual.toISOString().split("T")[0];
-//     }
-//   };
-
-//   const handleOpenPaymentModal = (client) => {
-//     setClientSelected(client);
-//     setCobrarSinDeuda(false);
-//     // Precargar la actividad actual del cliente como default
-//     setActividadPago(client.actividad || "");
-
-//     let aviso = "";
-//     const deudaTotal = (client.debt || 0) + (client.deudaAnterior || 0);
-
-//     if (client.saldoFavor > 0) {
-//       aviso = `💚 Saldo a favor: $${client.saldoFavor.toLocaleString("es-AR")}`;
-//     } else if (deudaTotal > 0) {
-//       if (client.deudaAnterior && client.deudaAnterior > 0) {
-//         aviso = `💰 Deuda total: $${deudaTotal.toLocaleString(
-//           "es-AR",
-//         )} (Meses anteriores: $${client.deudaAnterior.toLocaleString(
-//           "es-AR",
-//         )} + Mes actual: $${(client.debt || 0).toLocaleString("es-AR")})`;
-//       } else {
-//         aviso = `💰 Deuda mes actual: $${(client.debt || 0).toLocaleString(
-//           "es-AR",
-//         )}`;
-//       }
-//     } else {
-//       aviso = "✅ Al día - Sin deudas";
-//     }
-//     setAvisoSaldo(aviso);
-
-//     const conceptoPrecargado = client.actividad
-//       ? `${client.actividad}`
-//       : "Pago de clase";
-
-//     const fechaInicio = calcularFechaInicioAdelantado(client);
-//     setFechaInicioAdelantado(fechaInicio);
-
-//     setNuevoPago({
-//       concepto: conceptoPrecargado,
-//       metodo: "",
-//       monto: "",
-//       fecha: new Date().toLocaleDateString("es-AR"),
-//       hora: new Date().toLocaleTimeString("es-AR", {
-//         hour12: false,
-//         hour: "2-digit",
-//         minute: "2-digit",
-//       }),
-//     });
-
-//     setOpenPaymentModal(true);
-//   };
-
-//   const handleOpenProfile = async (client) => {
-//     setClientSelected(client);
-//     setLoadingSchedules(true);
-
-//     try {
-//       const schedulesRef = collection(db, "schedules");
-//       const schedulesSnap = await getDocs(schedulesRef);
-
-//       const clientSchedulesList = [];
-
-//       schedulesSnap.docs.forEach((doc) => {
-//         const scheduleData = doc.data();
-//         const clientInSchedule = scheduleData.clients?.find(
-//           (c) => c.id === client.id,
-//         );
-
-//         if (clientInSchedule) {
-//           clientSchedulesList.push({
-//             id: doc.id,
-//             date: scheduleData.date,
-//             hour: scheduleData.hour,
-//             attended: clientInSchedule.attended || false,
-//           });
-//         }
-//       });
-
-//       clientSchedulesList.sort((a, b) => {
-//         if (a.date === b.date) {
-//           return a.hour.localeCompare(b.hour);
-//         }
-//         return a.date.localeCompare(b.date);
-//       });
-
-//       setClientSchedules(clientSchedulesList);
-//     } catch (error) {
-//       console.error("Error al cargar horarios del cliente:", error);
-//     } finally {
-//       setLoadingSchedules(false);
-//     }
-
-//     setOpenProfile(true);
-//   };
-
-//   const handleOpenPricesManager = () => {
-//     setOpenPricesManager(true);
-//   };
-
-//   const handleActivityUpdate = () => {
-//     reloadActivities();
-//     setIsChange(true);
-//   };
-
-//   useEffect(() => {
-//     if (clientSelected && nuevoPago.monto) {
-//       const monto = parseInt(nuevoPago.monto);
-//       if (isNaN(monto) || monto <= 0) return;
-
-//       let avisoDetallado = "";
-//       const saldoFavorActual = clientSelected.saldoFavor || 0;
-//       const deudaActual = clientSelected.debt || 0;
-//       const deudaAnterior = clientSelected.deudaAnterior || 0;
-//       const deudaTotal = deudaActual + deudaAnterior;
-//       // Usa actividadPago para el cálculo cuando es adelantado
-//       const precioCuota =
-//         tipoPago === "adelantado"
-//           ? getPrecioCuotaCliente(clientSelected, actividadPago)
-//           : getPrecioCuotaCliente(clientSelected);
-
-//       if (tipoPago === "adelantado") {
-//         const montoTotal = precioCuota * mesesAdelantados;
-//         let montoAPagar = montoTotal;
-
-//         if (saldoFavorActual > 0) {
-//           if (saldoFavorActual >= montoTotal) {
-//             avisoDetallado = `✅ El saldo a favor ($${saldoFavorActual.toLocaleString(
-//               "es-AR",
-//             )}) cubre los ${mesesAdelantados} mes(es). Sobrante: $${(
-//               saldoFavorActual - montoTotal
-//             ).toLocaleString("es-AR")}`;
-//           } else {
-//             montoAPagar = montoTotal - saldoFavorActual;
-//             avisoDetallado = `💰 Total: $${montoTotal.toLocaleString(
-//               "es-AR",
-//             )} - Saldo: $${saldoFavorActual.toLocaleString(
-//               "es-AR",
-//             )} = A pagar: $${montoAPagar.toLocaleString("es-AR")}`;
-//           }
-//         } else {
-//           avisoDetallado = `📅 ${mesesAdelantados} mes(es) x $${precioCuota.toLocaleString(
-//             "es-AR",
-//           )} = $${montoTotal.toLocaleString("es-AR")}`;
-//         }
-
-//         if (monto !== montoAPagar && montoAPagar > 0) {
-//           avisoDetallado += `\n💡 Sugerido: $${montoAPagar.toLocaleString(
-//             "es-AR",
-//           )}`;
-//         }
-//       } else {
-//         if (cobrarSinDeuda) {
-//           if (monto >= deudaTotal) {
-//             const sobrante = monto - deudaTotal;
-//             avisoDetallado = `✅ Se cobrará sin deuda. Cliente quedará "Al día"${
-//               sobrante > 0
-//                 ? ` con $${sobrante.toLocaleString("es-AR")} a favor`
-//                 : ""
-//             }`;
-//           } else {
-//             const diferencia = deudaTotal - monto;
-//             avisoDetallado = `✅ Se cobrará sin deuda. Cliente quedará "Al día" (se le descuenta $${diferencia.toLocaleString(
-//               "es-AR",
-//             )})`;
-//           }
-//         } else {
-//           if (saldoFavorActual > 0) {
-//             const nuevoSaldoFavor = saldoFavorActual + monto;
-//             avisoDetallado = `💚 Nuevo saldo a favor: $${nuevoSaldoFavor.toLocaleString(
-//               "es-AR",
-//             )}`;
-//           } else if (deudaTotal > 0) {
-//             if (monto > deudaTotal) {
-//               const saldoFavor = monto - deudaTotal;
-//               avisoDetallado = `🎉 Cubre toda la deuda ($${deudaTotal.toLocaleString(
-//                 "es-AR",
-//               )}) + $${saldoFavor.toLocaleString("es-AR")} a favor`;
-//             } else if (monto === deudaTotal) {
-//               avisoDetallado = `✅ Cubre exactamente toda la deuda ($${deudaTotal.toLocaleString(
-//                 "es-AR",
-//               )})`;
-//             } else {
-//               const deudaRestante = deudaTotal - monto;
-
-//               if (deudaAnterior > 0) {
-//                 if (monto >= deudaAnterior) {
-//                   const sobrante = monto - deudaAnterior;
-//                   avisoDetallado = `✅ Cubre deuda anterior completa ($${deudaAnterior.toLocaleString(
-//                     "es-AR",
-//                   )}) + $${sobrante.toLocaleString(
-//                     "es-AR",
-//                   )} de mes actual. Restante: $${deudaRestante.toLocaleString(
-//                     "es-AR",
-//                   )}`;
-//                 } else {
-//                   const nuevaDeudaAnterior = deudaAnterior - monto;
-//                   avisoDetallado = `⚠️ Se aplica a deuda anterior. Nueva deuda anterior: $${nuevaDeudaAnterior.toLocaleString(
-//                     "es-AR",
-//                   )}. Total restante: $${deudaRestante.toLocaleString(
-//                     "es-AR",
-//                   )}`;
-//                 }
-//               } else {
-//                 avisoDetallado = `⚠️ Cubre $${monto.toLocaleString(
-//                   "es-AR",
-//                 )} de deuda. Restante: $${deudaRestante.toLocaleString(
-//                   "es-AR",
-//                 )}`;
-//               }
-//             }
-//           } else {
-//             avisoDetallado = `💚 Generará saldo a favor de $${monto.toLocaleString(
-//               "es-AR",
-//             )}`;
-//           }
-//         }
-//       }
-
-//       setAvisoSaldo(avisoDetallado);
-//     }
-//   }, [
-//     nuevoPago.monto,
-//     clientSelected,
-//     tipoPago,
-//     mesesAdelantados,
-//     cobrarSinDeuda,
-//     actividadPago, // ✅ recalcula el aviso cuando cambia la actividad
-//   ]);
-
-//   const handleRegistrarPago = async () => {
-//     if (isSubmitting) return;
-//     setIsSubmitting(true);
-
-//     try {
-//       if (!clientSelected || !nuevoPago.monto || !nuevoPago.metodo) {
-//         Swal.fire({
-//           icon: "error",
-//           title: "Error",
-//           text: "Complete todos los campos obligatorios.",
-//         });
-//         return;
-//       }
-
-//       const montoPagado = parseInt(nuevoPago.monto);
-//       const [dia, mes, anio] = nuevoPago.fecha.split("/").map(Number);
-//       const mesPago = `${anio}-${String(mes).padStart(2, "0")}`;
-//       const fechaPago = new Date(anio, mes - 1, dia);
-
-//       if (tipoPago === "adelantado") {
-//         if (!actividadPago) {
-//           Swal.fire({
-//             icon: "warning",
-//             title: "Seleccioná una actividad",
-//             text: "Debés elegir la actividad para el pago adelantado.",
-//           });
-//           return;
-//         }
-
-//         // ✅ Usa actividadPago (la elegida en el modal) para calcular el precio
-//         const precioCuota = getPrecioCuotaCliente(
-//           clientSelected,
-//           actividadPago,
-//         );
-//         const montoTotalNecesario = precioCuota * mesesAdelantados;
-//         const saldoFavorActual = clientSelected.saldoFavor || 0;
-
-//         let montoFaltante = montoTotalNecesario - saldoFavorActual;
-//         if (montoFaltante < 0) montoFaltante = 0;
-
-//         if (
-//           saldoFavorActual < montoTotalNecesario &&
-//           montoPagado < montoFaltante
-//         ) {
-//           Swal.fire({
-//             icon: "warning",
-//             title: "Monto insuficiente",
-//             text: `Para ${mesesAdelantados} mes(es) de ${actividadPago} necesitás pagar al menos $${montoFaltante.toLocaleString(
-//               "es-AR",
-//             )} (considerando saldo a favor de $${saldoFavorActual.toLocaleString(
-//               "es-AR",
-//             )})`,
-//           });
-//           return;
-//         }
-
-//         let saldoTotal = saldoFavorActual + montoPagado;
-//         let nuevoSaldoFavor = 0;
-
-//         if (saldoTotal >= montoTotalNecesario) {
-//           nuevoSaldoFavor = saldoTotal - montoTotalNecesario;
-//         }
-
-//         const fechaInicio = new Date(fechaInicioAdelantado);
-//         const ultimoMesPagado = new Date(
-//           fechaInicio.getFullYear(),
-//           fechaInicio.getMonth() + mesesAdelantados - 1,
-//           1,
-//         );
-//         const ultimoMesFacturado = `${ultimoMesPagado.getFullYear()}-${String(
-//           ultimoMesPagado.getMonth() + 1,
-//         ).padStart(2, "0")}`;
-
-//         const pagoFinal = {
-//           fecha: nuevoPago.fecha,
-//           hora: nuevoPago.hora,
-//           // ✅ Guarda la actividad elegida en el concepto y en el registro
-//           concepto: `${actividadPago} - ${mesesAdelantados} mes(es) adelantado(s)`,
-//           actividad: actividadPago,
-//           metodo: nuevoPago.metodo,
-//           monto: montoPagado,
-//           mes: mesPago,
-//           mesesPagados: mesesAdelantados,
-//           fechaInicioCobertura: fechaInicioAdelantado,
-//           fechaFinCobertura: ultimoMesFacturado,
-//           tipoPago: "adelantado",
-//           createdAt: Timestamp.fromDate(fechaPago),
-//           alumno: {
-//             name: clientSelected.name,
-//             lastName: clientSelected.lastName,
-//             dni: clientSelected.dni || "Sin DNI",
-//             id: clientSelected.id,
-//           },
-//         };
-
-//         // ✅ FIX: No pisar ultimoMesFacturado si el existente es posterior
-//         const ultimoMesExistente = clientSelected.ultimoMesFacturado || "";
-//         const nuevoUltimoMes =
-//           ultimoMesExistente > ultimoMesFacturado
-//             ? ultimoMesExistente
-//             : ultimoMesFacturado;
-
-//         const updateData = {
-//           ultimoPago: nuevoPago.fecha,
-//           debt: 0,
-//           deudaAnterior: 0,
-//           saldoFavor: nuevoSaldoFavor,
-//           estado: "Al día",
-//           ultimoMesFacturado: nuevoUltimoMes,
-//           mesesPagadosAdelantado: mesesAdelantados,
-//         };
-
-//         try {
-//           await addDoc(collection(db, "payments"), pagoFinal);
-//           const clientRef = doc(db, "clients", clientSelected.id);
-//           await updateDoc(clientRef, updateData);
-
-//           handleClosePaymentModal();
-//           setIsChange(true);
-
-//           Swal.fire({
-//             icon: "success",
-//             title: "Pago adelantado registrado",
-//             html: `
-//             <p>✅ ${mesesAdelantados} mes(es) de <strong>${actividadPago}</strong> pagado(s)</p>
-//             <p>📅 Cobertura hasta: ${new Date(
-//               ultimoMesFacturado + "-01",
-//             ).toLocaleDateString("es-AR", {
-//               year: "numeric",
-//               month: "long",
-//             })}</p>
-//             ${
-//               nuevoSaldoFavor > 0
-//                 ? `<p>💚 Saldo a favor: $${nuevoSaldoFavor.toLocaleString(
-//                     "es-AR",
-//                   )}</p>`
-//                 : ""
-//             }
-//           `,
-//             timer: 3000,
-//             showConfirmButton: false,
-//           });
-//         } catch (error) {
-//           console.error("Error al registrar pago adelantado:", error);
-//           Swal.fire({
-//             icon: "error",
-//             title: "Error",
-//             text: "Hubo un error al registrar el pago adelantado",
-//           });
-//         }
-//       } else {
-//         const pagoFinal = {
-//           fecha: nuevoPago.fecha,
-//           hora: nuevoPago.hora,
-//           concepto: nuevoPago.concepto || "Pago de clase",
-//           metodo: nuevoPago.metodo,
-//           monto: montoPagado,
-//           mes: mesPago,
-//           tipoPago: cobrarSinDeuda ? "sin_deuda" : "normal",
-//           createdAt: Timestamp.fromDate(fechaPago),
-//           alumno: {
-//             name: clientSelected.name,
-//             lastName: clientSelected.lastName,
-//             dni: clientSelected.dni || "Sin DNI",
-//             id: clientSelected.id,
-//           },
-//         };
-
-//         const deudaActual = clientSelected.debt || 0;
-//         const saldoFavorActual = clientSelected.saldoFavor || 0;
-//         const deudaAnterior = clientSelected.deudaAnterior || 0;
-//         const deudaTotal = deudaActual + deudaAnterior;
-
-//         let nuevaDeuda = 0;
-//         let nuevoSaldoFavor = 0;
-//         let nuevoEstado = "Al día";
-//         let nuevaDeudaAnterior = 0;
-
-//         if (cobrarSinDeuda) {
-//           nuevaDeuda = 0;
-//           nuevaDeudaAnterior = 0;
-
-//           if (montoPagado > deudaTotal) {
-//             nuevoSaldoFavor = montoPagado - deudaTotal;
-//           } else {
-//             nuevoSaldoFavor = 0;
-//           }
-
-//           nuevoEstado = "Al día";
-//         } else {
-//           if (saldoFavorActual > 0) {
-//             nuevoSaldoFavor = saldoFavorActual + montoPagado;
-//             nuevaDeuda = 0;
-//             nuevaDeudaAnterior = 0;
-//             nuevoEstado = "Al día";
-//           } else if (deudaTotal > 0) {
-//             if (montoPagado >= deudaTotal) {
-//               nuevoSaldoFavor = montoPagado - deudaTotal;
-//               nuevaDeuda = 0;
-//               nuevaDeudaAnterior = 0;
-//               nuevoEstado = "Al día";
-//             } else {
-//               nuevoSaldoFavor = 0;
-
-//               if (montoPagado >= deudaAnterior) {
-//                 const sobrante = montoPagado - deudaAnterior;
-//                 nuevaDeudaAnterior = 0;
-//                 nuevaDeuda = deudaActual - sobrante;
-//               } else {
-//                 nuevaDeudaAnterior = deudaAnterior - montoPagado;
-//                 nuevaDeuda = deudaActual;
-//               }
-
-//               nuevoEstado = "Deudor";
-//             }
-//           } else {
-//             nuevoSaldoFavor = montoPagado;
-//             nuevaDeuda = 0;
-//             nuevaDeudaAnterior = 0;
-//             nuevoEstado = "Al día";
-//           }
-//         }
-
-//         // ✅ FIX Bug 3: No pisar ultimoMesFacturado si el cliente tiene uno posterior
-//         const ultimoMesExistente = clientSelected.ultimoMesFacturado || "";
-//         const nuevoUltimoMes =
-//           ultimoMesExistente > mesPago ? ultimoMesExistente : mesPago;
-
-//         const updateData = {
-//           ultimoPago: nuevoPago.fecha,
-//           debt: nuevaDeuda,
-//           deudaAnterior: nuevaDeudaAnterior,
-//           saldoFavor: nuevoSaldoFavor,
-//           estado: nuevoEstado,
-//           ultimoMesFacturado: nuevoUltimoMes,
-//         };
-
-//         try {
-//           await addDoc(collection(db, "payments"), pagoFinal);
-//           const clientRef = doc(db, "clients", clientSelected.id);
-//           await updateDoc(clientRef, updateData);
-
-//           handleClosePaymentModal();
-//           setIsChange(true);
-
-//           Swal.fire({
-//             icon: "success",
-//             title: cobrarSinDeuda
-//               ? "Pago sin deuda registrado"
-//               : "Pago registrado",
-//             text: cobrarSinDeuda
-//               ? "El pago fue aceptado sin generar deuda ✅"
-//               : "El pago fue registrado exitosamente ✅",
-//             timer: 2000,
-//             showConfirmButton: false,
-//           });
-//         } catch (error) {
-//           console.error("Error al registrar pago:", error);
-//           Swal.fire({
-//             icon: "error",
-//             title: "Error",
-//             text: "Hubo un error al registrar el pago",
-//           });
-//         }
-//       }
-//     } finally {
-//       setIsSubmitting(false);
-//     }
-//   };
-
-//   const deleteClient = (id) => {
-//     Swal.fire({
-//       title: "¿Estás seguro?",
-//       text: "Este alumno será eliminado permanentemente.",
-//       icon: "warning",
-//       showCancelButton: true,
-//       confirmButtonColor: "#d33",
-//       cancelButtonColor: "#3085d6",
-//       confirmButtonText: "Sí, eliminar",
-//       cancelButtonText: "Cancelar",
-//     }).then((result) => {
-//       if (result.isConfirmed) {
-//         deleteDoc(doc(db, "clients", id)).then(() => {
-//           setIsChange(true);
-//           Swal.fire("Eliminado", "El alumno ha sido borrado.", "success");
-//         });
-//       }
-//     });
-//   };
-
-//   const getDayName = (dateString) => {
-//     const date = new Date(dateString);
-//     const dayValue = date.getDay();
-//     return daysOfWeek.find((d) => d.value === dayValue)?.label || "";
-//   };
-
-//   const formatDate = (dateString) => {
-//     const date = new Date(dateString);
-//     return date.toLocaleDateString("es-ES", {
-//       day: "2-digit",
-//       month: "2-digit",
-//     });
-//   };
-
-//   const getScheduleSummary = (schedules) => {
-//     const summary = {};
-
-//     schedules.forEach((schedule) => {
-//       const date = new Date(schedule.date);
-//       const dayValue = date.getDay();
-//       const dayName = getDayName(schedule.date);
-
-//       if (!summary[dayValue]) {
-//         summary[dayValue] = {
-//           day: dayName,
-//           hours: new Set(),
-//         };
-//       }
-
-//       summary[dayValue].hours.add(schedule.hour);
-//     });
-
-//     return Object.values(summary).map((item) => ({
-//       day: item.day,
-//       hours: Array.from(item.hours).sort(),
-//     }));
-//   };
-
-//   const filteredClients = Array.isArray(clients)
-//     ? clients.filter((client) => {
-//         const matchesActividad = actividadFilter
-//           ? client.actividad === actividadFilter
-//           : true;
-//         const matchesSearch = `${client.name || ""} ${client.lastName || ""} ${
-//           client.dni || ""
-//         }`
-//           .toLowerCase()
-//           .includes(searchTerm.toLowerCase());
-//         return matchesActividad && matchesSearch;
-//       })
-//     : [];
-
-//   const handleOpenScheduleAssignment = (client) => {
-//     setClientForSchedule(client);
-//     setOpenScheduleAssignment(true);
-//   };
-
-//   const handleCloseScheduleAssignment = () => {
-//     setOpenScheduleAssignment(false);
-//     setClientForSchedule(null);
-//   };
-
-//   // Precio según actividad elegida en el modal (para mostrar en el resumen)
-//   const precioAdelantado = clientSelected
-//     ? getPrecioCuotaCliente(clientSelected, actividadPago)
-//     : 0;
-
-//   return (
-//     <div style={{ marginTop: 20 }}>
-//       <ActivityStats
-//         clients={clients}
-//         title="Resumen de Alumnos"
-//         entityLabel="alumnos"
-//       />
-//       <div
-//         style={{
-//           display: "flex",
-//           justifyContent: "space-between",
-//           alignItems: "center",
-//           marginBottom: 10,
-//           flexWrap: "wrap",
-//           gap: 10,
-//         }}
-//       >
-//         <div style={{ marginLeft: 10 }}>
-//           <h3 style={{ margin: 0 }}>Lista de alumnos</h3>
-//           <p style={{ margin: "5px 0", fontSize: "0.9rem", color: "gray" }}>
-//             {filteredClients.length} alumnos
-//           </p>
-//         </div>
-//         <div
-//           style={{
-//             display: "flex",
-//             alignItems: "center",
-//             gap: 8,
-//             flexWrap: "wrap",
-//           }}
-//         >
-//           <TextField
-//             label="Buscar"
-//             variant="outlined"
-//             size="small"
-//             value={searchTerm}
-//             onChange={(e) => setSearchTerm(e.target.value)}
-//             sx={{ width: 150 }}
-//           />
-//           <Select
-//             displayEmpty
-//             size="small"
-//             value={actividadFilter}
-//             onChange={(e) => setActividadFilter(e.target.value)}
-//             sx={{ width: 120 }}
-//           >
-//             <MenuItem value="">Todas</MenuItem>
-//             {Array.isArray(activities) &&
-//               activities.map((actividad) => (
-//                 <MenuItem key={actividad.id} value={actividad.label}>
-//                   {actividad.label}
-//                 </MenuItem>
-//               ))}
-//           </Select>
-//           <MonthlyBillingManager
-//             activities={activities}
-//             setIsChange={setIsChange}
-//           />
-//           {/* <RevertBilling setIsChange={setIsChange} />
-//           <ResetDebts setIsChange={setIsChange} />
-//           <FixClientData /> */}
-//           <Button
-//             variant="outlined"
-//             startIcon={<SettingsIcon />}
-//             onClick={handleOpenPricesManager}
-//             size="small"
-//           >
-//             Precios
-//           </Button>
-
-//           <Button
-//             variant="contained"
-//             onClick={() => handleOpenForm(null)}
-//             size="small"
-//           >
-//             + Alumno
-//           </Button>
-//         </div>
-//       </div>
-
-//       <TableContainer component={Paper}>
-//         <Table
-//           sx={{ minWidth: 650 }}
-//           size="small"
-//           aria-label="tabla de alumnos"
-//         >
-//           <TableHead>
-//             <TableRow>
-//               <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-//                 Nombre
-//               </TableCell>
-//               <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-//                 Apellido
-//               </TableCell>
-//               <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-//                 DNI
-//               </TableCell>
-//               <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-//                 Celular
-//               </TableCell>
-//               <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-//                 Actividad
-//               </TableCell>
-//               <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-//                 <Tooltip title="Deuda del mes actual" arrow>
-//                   <span>Deuda</span>
-//                 </Tooltip>
-//               </TableCell>
-//               <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-//                 Acciones
-//               </TableCell>
-//             </TableRow>
-//           </TableHead>
-//           <TableBody>
-//             {filteredClients.map((client) => {
-//               const deudaTotal =
-//                 (client.debt || 0) + (client.deudaAnterior || 0);
-//               const tieneDeudaAnterior = (client.deudaAnterior || 0) > 0;
-
-//               return (
-//                 <TableRow key={client.id}>
-//                   <TableCell
-//                     sx={{
-//                       color:
-//                         client.estado === "Deudor"
-//                           ? "red"
-//                           : client.estado === "Inactivo"
-//                             ? "goldenrod"
-//                             : "green",
-//                       fontWeight: "bold",
-//                       cursor: "pointer",
-//                       fontSize: "0.875rem",
-//                     }}
-//                     onClick={() => handleOpenProfile(client)}
-//                   >
-//                     {client.name}
-//                   </TableCell>
-//                   <TableCell
-//                     sx={{ cursor: "pointer", fontSize: "0.875rem" }}
-//                     onClick={() => handleOpenProfile(client)}
-//                   >
-//                     {client.lastName}
-//                   </TableCell>
-//                   <TableCell sx={{ fontSize: "0.875rem" }}>
-//                     {client.dni}
-//                   </TableCell>
-//                   <TableCell sx={{ fontSize: "0.875rem" }}>
-//                     {client.phone}
-//                   </TableCell>
-//                   <TableCell sx={{ fontSize: "0.875rem" }}>
-//                     {client.actividad || "No asignada"}
-//                   </TableCell>
-//                   <TableCell>
-//                     <Box
-//                       sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-//                     >
-//                       <Typography
-//                         variant="body2"
-//                         sx={{
-//                           color:
-//                             client.estado === "Inactivo"
-//                               ? "goldenrod"
-//                               : deudaTotal > 0
-//                                 ? "error.main"
-//                                 : "success.main",
-//                           fontWeight: "bold",
-//                           fontSize: "0.875rem",
-//                         }}
-//                       >
-//                         {client.estado === "Inactivo"
-//                           ? "INACTIVO"
-//                           : `$${deudaTotal.toLocaleString("es-AR")}`}
-//                       </Typography>
-//                       {tieneDeudaAnterior && (
-//                         <Tooltip
-//                           title={`Deuda anterior: ${client.deudaAnterior.toLocaleString(
-//                             "es-AR",
-//                           )} | Mes actual: ${(client.debt || 0).toLocaleString(
-//                             "es-AR",
-//                           )}`}
-//                           arrow
-//                         >
-//                           <InfoIcon
-//                             sx={{ fontSize: 16, color: "warning.main" }}
-//                           />
-//                         </Tooltip>
-//                       )}
-//                     </Box>
-//                   </TableCell>
-//                   <TableCell>
-//                     <IconButton
-//                       onClick={() => handleOpenPaymentModal(client)}
-//                       color="primary"
-//                       title="Registrar pago"
-//                       size="small"
-//                     >
-//                       <PaymentIcon fontSize="small" />
-//                     </IconButton>
-//                     <IconButton
-//                       onClick={() => handleOpenForm(client)}
-//                       size="small"
-//                     >
-//                       <EditIcon fontSize="small" />
-//                     </IconButton>
-//                     <IconButton
-//                       onClick={() => deleteClient(client.id)}
-//                       size="small"
-//                     >
-//                       <DeleteIcon fontSize="small" />
-//                     </IconButton>
-//                     <IconButton
-//                       onClick={() => handleOpenScheduleAssignment(client)}
-//                       color="secondary"
-//                       title="Asignar horarios"
-//                       size="small"
-//                     >
-//                       <AccessTimeFilledIcon fontSize="small" />
-//                     </IconButton>
-//                   </TableCell>
-//                 </TableRow>
-//               );
-//             })}
-//           </TableBody>
-//         </Table>
-//       </TableContainer>
-
-//       <Modal open={openForm} onClose={handleCloseForm}>
-//         <Box
-//           sx={{ ...modalStyle, width: "90vw", maxWidth: 600, height: "85vh" }}
-//         >
-//           <ClientForm
-//             handleClose={handleCloseForm}
-//             setIsChange={setIsChange}
-//             clientSelected={clientSelected}
-//             setClientSelected={setClientSelected}
-//           />
-//         </Box>
-//       </Modal>
-
-//       <Modal open={openPaymentModal} onClose={handleClosePaymentModal}>
-//         <Box sx={modalStyle}>
-//           <Typography variant="h6" sx={{ mb: 1, fontSize: "1.1rem" }}>
-//             Registrar Pago
-//           </Typography>
-//           {clientSelected && (
-//             <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
-//               {clientSelected.name} {clientSelected.lastName} - DNI:{" "}
-//               {clientSelected.dni}
-//             </Typography>
-//           )}
-
-//           <Box sx={{ mb: 2, p: 1.5, bgcolor: "grey.50", borderRadius: 1 }}>
-//             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: "bold" }}>
-//               Tipo de Pago
-//             </Typography>
-//             <RadioGroup
-//               value={tipoPago}
-//               onChange={(e) => setTipoPago(e.target.value)}
-//               row
-//             >
-//               <FormControlLabel
-//                 value="normal"
-//                 control={<Radio size="small" />}
-//                 label="Pago Normal"
-//               />
-//               <FormControlLabel
-//                 value="adelantado"
-//                 control={<Radio size="small" />}
-//                 label="Pago Adelantado"
-//               />
-//             </RadioGroup>
-//           </Box>
-
-//           {tipoPago === "normal" &&
-//             clientSelected &&
-//             (clientSelected.debt || 0) + (clientSelected.deudaAnterior || 0) >
-//               0 && (
-//               <Box sx={{ mb: 2, p: 1.5, bgcolor: "grey.50", borderRadius: 1 }}>
-//                 <FormControlLabel
-//                   control={
-//                     <Checkbox
-//                       checked={cobrarSinDeuda}
-//                       onChange={(e) => setCobrarSinDeuda(e.target.checked)}
-//                       size="small"
-//                     />
-//                   }
-//                   label={
-//                     <Box>
-//                       <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-//                         Cobrar sin deuda
-//                       </Typography>
-//                       <Typography variant="caption" color="text.secondary">
-//                         Acepta el pago como válido sin importar si cubre la
-//                         deuda total (útil para descuentos o reserva de lugar)
-//                       </Typography>
-//                     </Box>
-//                   }
-//                 />
-//               </Box>
-//             )}
-
-//           {tipoPago === "adelantado" && clientSelected && (
-//             <Box sx={{ mb: 2, p: 2, bgcolor: "#e3f2fd", borderRadius: 1 }}>
-//               <Typography
-//                 variant="subtitle2"
-//                 sx={{ mb: 1.5, fontWeight: "bold" }}
-//               >
-//                 Configuración de Pago Adelantado
-//               </Typography>
-
-//               <Grid container spacing={2}>
-//                 {/* ✅ Selector de actividad */}
-//                 <Grid item xs={12}>
-//                   <TextField
-//                     select
-//                     label="Actividad a pagar"
-//                     size="small"
-//                     fullWidth
-//                     value={actividadPago}
-//                     onChange={(e) => {
-//                       setActividadPago(e.target.value);
-//                       // Actualizar concepto automáticamente
-//                       setNuevoPago((prev) => ({
-//                         ...prev,
-//                         concepto: e.target.value,
-//                       }));
-//                     }}
-//                   >
-//                     {activities.map((a) => (
-//                       <MenuItem key={a.id} value={a.label}>
-//                         {a.label} — ${a.valor.toLocaleString("es-AR")}
-//                       </MenuItem>
-//                     ))}
-//                   </TextField>
-//                 </Grid>
-
-//                 <Grid item xs={6}>
-//                   <TextField
-//                     label="Cantidad de meses"
-//                     type="number"
-//                     size="small"
-//                     fullWidth
-//                     value={mesesAdelantados}
-//                     onChange={(e) => {
-//                       const val = parseInt(e.target.value);
-//                       if (val > 0 && val <= 12) {
-//                         setMesesAdelantados(val);
-//                       }
-//                     }}
-//                     inputProps={{ min: 1, max: 12 }}
-//                   />
-//                 </Grid>
-//                 <Grid item xs={6}>
-//                   <TextField
-//                     label="Inicio cobertura"
-//                     type="date"
-//                     size="small"
-//                     fullWidth
-//                     value={fechaInicioAdelantado}
-//                     onChange={(e) => setFechaInicioAdelantado(e.target.value)}
-//                     InputLabelProps={{ shrink: true }}
-//                   />
-//                 </Grid>
-//               </Grid>
-
-//               <Box sx={{ mt: 1.5, p: 1, bgcolor: "white", borderRadius: 1 }}>
-//                 <Typography variant="caption" display="block">
-//                   <strong>Precio por mes:</strong> $
-//                   {precioAdelantado.toLocaleString("es-AR")}
-//                 </Typography>
-//                 <Typography variant="caption" display="block">
-//                   <strong>Total a pagar:</strong> $
-//                   {(precioAdelantado * mesesAdelantados).toLocaleString(
-//                     "es-AR",
-//                   )}
-//                 </Typography>
-//                 {clientSelected.saldoFavor > 0 && (
-//                   <>
-//                     <Typography
-//                       variant="caption"
-//                       display="block"
-//                       color="success.main"
-//                     >
-//                       <strong>Saldo a favor:</strong> -$
-//                       {clientSelected.saldoFavor.toLocaleString("es-AR")}
-//                     </Typography>
-//                     <Divider sx={{ my: 0.5 }} />
-//                     <Typography
-//                       variant="caption"
-//                       display="block"
-//                       sx={{ fontWeight: "bold" }}
-//                     >
-//                       <strong>Monto final:</strong> $
-//                       {Math.max(
-//                         0,
-//                         precioAdelantado * mesesAdelantados -
-//                           clientSelected.saldoFavor,
-//                       ).toLocaleString("es-AR")}
-//                     </Typography>
-//                   </>
-//                 )}
-//               </Box>
-//             </Box>
-//           )}
-
-//           {avisoSaldo && (
-//             <Alert
-//               severity={
-//                 avisoSaldo.includes("favor") ||
-//                 avisoSaldo.includes("exactamente") ||
-//                 avisoSaldo.includes("toda la deuda") ||
-//                 avisoSaldo.includes("cubre") ||
-//                 avisoSaldo.includes("condonan")
-//                   ? "success"
-//                   : avisoSaldo.includes("Restante") ||
-//                       avisoSaldo.includes("anterior")
-//                     ? "warning"
-//                     : "info"
-//               }
-//               sx={{ mb: 2, fontSize: "0.8rem" }}
-//             >
-//               {avisoSaldo}
-//             </Alert>
-//           )}
-
-//           <Grid container spacing={1}>
-//             <Grid item xs={12}>
-//               <TextField
-//                 label="Concepto"
-//                 fullWidth
-//                 size="small"
-//                 value={nuevoPago.concepto}
-//                 onChange={(e) =>
-//                   setNuevoPago({ ...nuevoPago, concepto: e.target.value })
-//                 }
-//               />
-//             </Grid>
-//             <Grid item xs={6}>
-//               <TextField
-//                 label="Método"
-//                 select
-//                 fullWidth
-//                 size="small"
-//                 value={nuevoPago.metodo}
-//                 onChange={(e) =>
-//                   setNuevoPago({ ...nuevoPago, metodo: e.target.value })
-//                 }
-//                 required
-//               >
-//                 <MenuItem value="efectivo">💵 Efectivo</MenuItem>
-//                 <MenuItem value="transferencia">✔ Transfer.</MenuItem>
-//                 <MenuItem value="tarjeta">💳 Tarjeta</MenuItem>
-//               </TextField>
-//             </Grid>
-//             <Grid item xs={6}>
-//               <TextField
-//                 label="Monto"
-//                 type="number"
-//                 fullWidth
-//                 size="small"
-//                 value={nuevoPago.monto}
-//                 onChange={(e) =>
-//                   setNuevoPago({ ...nuevoPago, monto: e.target.value })
-//                 }
-//                 required
-//               />
-//             </Grid>
-//             <Grid item xs={6}>
-//               <TextField
-//                 label="Fecha"
-//                 fullWidth
-//                 size="small"
-//                 value={nuevoPago.fecha}
-//                 onChange={(e) =>
-//                   setNuevoPago({ ...nuevoPago, fecha: e.target.value })
-//                 }
-//               />
-//             </Grid>
-//             <Grid item xs={6}>
-//               <TextField
-//                 label="Hora"
-//                 fullWidth
-//                 size="small"
-//                 value={nuevoPago.hora}
-//                 onChange={(e) =>
-//                   setNuevoPago({ ...nuevoPago, hora: e.target.value })
-//                 }
-//               />
-//             </Grid>
-//           </Grid>
-
-//           <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-//             <Button
-//               variant="outlined"
-//               onClick={handleClosePaymentModal}
-//               fullWidth
-//               size="small"
-//             >
-//               Cancelar
-//             </Button>
-//             <Button
-//               variant="contained"
-//               onClick={handleRegistrarPago}
-//               fullWidth
-//               size="small"
-//               disabled={!nuevoPago.monto || !nuevoPago.metodo || isSubmitting}
-//             >
-//               {isSubmitting
-//                 ? "Registrando..."
-//                 : tipoPago === "adelantado"
-//                   ? "Pagar Adelantado"
-//                   : cobrarSinDeuda
-//                     ? "Cobrar sin Deuda"
-//                     : "Registrar"}
-//             </Button>
-//           </Box>
-//         </Box>
-//       </Modal>
-
-//       <Modal open={openProfile} onClose={handleCloseProfile}>
-//         <Box sx={profileModalStyle}>
-//           {clientSelected && (
-//             <>
-//               <Typography
-//                 variant="h6"
-//                 sx={{
-//                   fontWeight: "bold",
-//                   textAlign: "center",
-//                   mb: 2,
-//                   fontSize: "1.1rem",
-//                 }}
-//               >
-//                 {clientSelected.name} {clientSelected.lastName}
-//               </Typography>
-
-//               <Accordion defaultExpanded>
-//                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-//                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-//                     <PersonIcon color="primary" />
-//                     <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-//                       Información Personal
-//                     </Typography>
-//                   </Box>
-//                 </AccordionSummary>
-//                 <AccordionDetails>
-//                   <Grid container spacing={1}>
-//                     <Grid item xs={6}>
-//                       <Typography variant="body2">
-//                         <strong>DNI:</strong> {clientSelected.dni}
-//                       </Typography>
-//                     </Grid>
-//                     <Grid item xs={6}>
-//                       <Typography variant="body2">
-//                         <strong>Celular:</strong> {clientSelected.phone}
-//                       </Typography>
-//                     </Grid>
-//                     <Grid item xs={12}>
-//                       <Typography variant="body2">
-//                         <strong>Dirección:</strong> {clientSelected.address}
-//                       </Typography>
-//                     </Grid>
-//                     <Grid item xs={12}>
-//                       <Typography variant="body2">
-//                         <strong>Actividad:</strong>{" "}
-//                         {clientSelected.actividad || "No asignada"}
-//                       </Typography>
-//                     </Grid>
-//                     <Grid item xs={12}>
-//                       <Typography variant="body2">
-//                         <strong>Fecha de inicio:</strong>{" "}
-//                         {clientSelected.fechaInicio
-//                           ? new Date(
-//                               clientSelected.fechaInicio,
-//                             ).toLocaleDateString("es-ES")
-//                           : "No especificada"}
-//                       </Typography>
-//                     </Grid>
-//                   </Grid>
-//                 </AccordionDetails>
-//               </Accordion>
-
-//               <Accordion defaultExpanded>
-//                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-//                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-//                     <AccountBalanceWalletIcon color="primary" />
-//                     <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-//                       Estado Financiero
-//                     </Typography>
-//                   </Box>
-//                 </AccordionSummary>
-//                 <AccordionDetails>
-//                   <Grid container spacing={1}>
-//                     <Grid item xs={12}>
-//                       <Box
-//                         sx={{
-//                           p: 1.5,
-//                           bgcolor:
-//                             clientSelected.estado === "Deudor"
-//                               ? "#ffebee"
-//                               : clientSelected.estado === "Al día"
-//                                 ? "#e8f5e9"
-//                                 : "#fff3e0",
-//                           borderRadius: 1,
-//                           border: `2px solid ${
-//                             clientSelected.estado === "Deudor"
-//                               ? "#ef5350"
-//                               : clientSelected.estado === "Al día"
-//                                 ? "#66bb6a"
-//                                 : "#ffa726"
-//                           }`,
-//                         }}
-//                       >
-//                         <Typography
-//                           variant="h6"
-//                           sx={{
-//                             fontWeight: "bold",
-//                             color:
-//                               clientSelected.estado === "Deudor"
-//                                 ? "#c62828"
-//                                 : clientSelected.estado === "Al día"
-//                                   ? "#2e7d32"
-//                                   : "#ef6c00",
-//                             textAlign: "center",
-//                           }}
-//                         >
-//                           {clientSelected.estado}
-//                         </Typography>
-//                       </Box>
-//                     </Grid>
-
-//                     {((clientSelected.debt || 0) > 0 ||
-//                       (clientSelected.deudaAnterior || 0) > 0) && (
-//                       <Grid item xs={12}>
-//                         <Box
-//                           sx={{
-//                             mt: 1,
-//                             p: 1.5,
-//                             bgcolor: "#ffebee",
-//                             borderRadius: 1,
-//                             border: "2px solid #ef5350",
-//                           }}
-//                         >
-//                           <Typography
-//                             variant="subtitle2"
-//                             sx={{
-//                               fontWeight: "bold",
-//                               mb: 1,
-//                               color: "#c62828",
-//                               display: "flex",
-//                               alignItems: "center",
-//                               gap: 0.5,
-//                             }}
-//                           >
-//                             <HistoryIcon fontSize="small" />
-//                             Desglose de Deuda:
-//                           </Typography>
-
-//                           {(clientSelected.deudaAnterior || 0) > 0 && (
-//                             <Box sx={{ mb: 1, pl: 1 }}>
-//                               <Typography variant="body2" color="error">
-//                                 📅 <strong>Meses anteriores:</strong> $
-//                                 {(
-//                                   clientSelected.deudaAnterior || 0
-//                                 ).toLocaleString("es-AR")}
-//                               </Typography>
-//                             </Box>
-//                           )}
-
-//                           {(clientSelected.debt || 0) > 0 && (
-//                             <Box sx={{ mb: 1, pl: 1 }}>
-//                               <Typography variant="body2" color="warning.main">
-//                                 📆 <strong>Mes actual:</strong> $
-//                                 {(clientSelected.debt || 0).toLocaleString(
-//                                   "es-AR",
-//                                 )}
-//                               </Typography>
-//                             </Box>
-//                           )}
-
-//                           <Divider sx={{ my: 1 }} />
-
-//                           <Box sx={{ pl: 1 }}>
-//                             <Typography
-//                               variant="body2"
-//                               sx={{
-//                                 fontWeight: "bold",
-//                                 color: "#c62828",
-//                                 fontSize: "1rem",
-//                               }}
-//                             >
-//                               💰 <strong>TOTAL DEUDA:</strong> $
-//                               {(
-//                                 (clientSelected.debt || 0) +
-//                                 (clientSelected.deudaAnterior || 0)
-//                               ).toLocaleString("es-AR")}
-//                             </Typography>
-//                           </Box>
-//                         </Box>
-//                       </Grid>
-//                     )}
-
-//                     {clientSelected.saldoFavor > 0 && (
-//                       <Grid item xs={12}>
-//                         <Box
-//                           sx={{
-//                             mt: 1,
-//                             p: 1.5,
-//                             bgcolor: "#e8f5e9",
-//                             borderRadius: 1,
-//                             border: "2px solid #66bb6a",
-//                           }}
-//                         >
-//                           <Typography
-//                             variant="body2"
-//                             sx={{
-//                               fontWeight: "bold",
-//                               color: "#2e7d32",
-//                               fontSize: "1rem",
-//                             }}
-//                           >
-//                             💚 <strong>Saldo a favor:</strong> $
-//                             {(clientSelected.saldoFavor || 0).toLocaleString(
-//                               "es-AR",
-//                             )}
-//                           </Typography>
-//                         </Box>
-//                       </Grid>
-//                     )}
-
-//                     <Grid item xs={6}>
-//                       <Typography variant="body2">
-//                         <strong>Último pago:</strong>{" "}
-//                         {clientSelected.ultimoPago || "Sin pagos"}
-//                       </Typography>
-//                     </Grid>
-
-//                     {clientSelected.ultimoMesFacturado && (
-//                       <Grid item xs={12}>
-//                         <Typography variant="body2">
-//                           <strong>Último mes facturado:</strong>{" "}
-//                           {new Date(
-//                             clientSelected.ultimoMesFacturado + "-02",
-//                           ).toLocaleDateString("es-AR", {
-//                             year: "numeric",
-//                             month: "long",
-//                           })}
-//                         </Typography>
-//                       </Grid>
-//                     )}
-
-//                     {clientSelected.mesesPagadosAdelantado && (
-//                       <Grid item xs={12}>
-//                         <Box
-//                           sx={{
-//                             mt: 1,
-//                             p: 1.5,
-//                             bgcolor: "#e3f2fd",
-//                             borderRadius: 1,
-//                             border: "2px solid #42a5f5",
-//                           }}
-//                         >
-//                           <Typography
-//                             variant="body2"
-//                             sx={{ fontWeight: "bold", color: "#1565c0" }}
-//                           >
-//                             ✅ Pagado adelantado:{" "}
-//                             {clientSelected.mesesPagadosAdelantado} mes(es)
-//                           </Typography>
-//                           <Typography variant="caption" color="text.secondary">
-//                             Cubierto hasta:{" "}
-//                             {new Date(
-//                               clientSelected.ultimoMesFacturado + "-02",
-//                             ).toLocaleDateString("es-AR", {
-//                               year: "numeric",
-//                               month: "long",
-//                             })}
-//                           </Typography>
-//                         </Box>
-//                       </Grid>
-//                     )}
-//                   </Grid>
-//                 </AccordionDetails>
-//               </Accordion>
-
-//               <Accordion>
-//                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-//                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-//                     <AccessTimeIcon color="primary" />
-//                     <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-//                       Horarios ({clientSchedules.length})
-//                     </Typography>
-//                   </Box>
-//                 </AccordionSummary>
-//                 <AccordionDetails>
-//                   {loadingSchedules ? (
-//                     <Typography variant="body2">Cargando...</Typography>
-//                   ) : clientSchedules.length > 0 ? (
-//                     <>
-//                       <Box sx={{ mb: 2 }}>
-//                         <Typography
-//                           variant="body2"
-//                           sx={{ mb: 1, fontWeight: "bold" }}
-//                         >
-//                           Horarios habituales:
-//                         </Typography>
-//                         <Box
-//                           sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
-//                         >
-//                           {getScheduleSummary(clientSchedules).map(
-//                             (summary, index) => (
-//                               <Chip
-//                                 key={index}
-//                                 label={`${summary.day}: ${summary.hours.join(
-//                                   ", ",
-//                                 )}`}
-//                                 variant="outlined"
-//                                 size="small"
-//                                 sx={{ fontSize: "0.7rem" }}
-//                               />
-//                             ),
-//                           )}
-//                         </Box>
-//                       </Box>
-
-//                       <Typography
-//                         variant="body2"
-//                         sx={{ mb: 1, fontWeight: "bold" }}
-//                       >
-//                         Próximos:
-//                       </Typography>
-//                       <Box sx={{ maxHeight: 150, overflow: "auto" }}>
-//                         {clientSchedules
-//                           .filter(
-//                             (schedule) =>
-//                               new Date(schedule.date) >=
-//                               new Date().setHours(0, 0, 0, 0),
-//                           )
-//                           .slice(0, 5)
-//                           .map((schedule, index) => (
-//                             <Box
-//                               key={index}
-//                               sx={{
-//                                 display: "flex",
-//                                 justifyContent: "space-between",
-//                                 alignItems: "center",
-//                                 p: 0.5,
-//                                 mb: 0.5,
-//                                 bgcolor: schedule.attended
-//                                   ? "success.light"
-//                                   : "grey.100",
-//                                 borderRadius: 1,
-//                                 fontSize: "0.75rem",
-//                               }}
-//                             >
-//                               <Box>
-//                                 <Typography variant="caption">
-//                                   {getDayName(schedule.date)}{" "}
-//                                   {formatDate(schedule.date)} - {schedule.hour}
-//                                 </Typography>
-//                               </Box>
-//                               <Chip
-//                                 label={schedule.attended ? "✓" : "○"}
-//                                 color={
-//                                   schedule.attended ? "success" : "default"
-//                                 }
-//                                 size="small"
-//                                 sx={{ fontSize: "0.7rem", height: 18 }}
-//                               />
-//                             </Box>
-//                           ))}
-//                       </Box>
-
-//                       <Box
-//                         sx={{
-//                           mt: 1,
-//                           p: 1,
-//                           bgcolor: "grey.50",
-//                           borderRadius: 1,
-//                         }}
-//                       >
-//                         <Grid container spacing={1}>
-//                           <Grid item xs={4}>
-//                             <Typography variant="caption">
-//                               <strong>Total:</strong> {clientSchedules.length}
-//                             </Typography>
-//                           </Grid>
-//                           <Grid item xs={4}>
-//                             <Typography variant="caption">
-//                               <strong>Asistió:</strong>{" "}
-//                               {clientSchedules.filter((s) => s.attended).length}
-//                             </Typography>
-//                           </Grid>
-//                           <Grid item xs={4}>
-//                             <Typography variant="caption">
-//                               <strong>%:</strong>{" "}
-//                               {clientSchedules.length > 0
-//                                 ? Math.round(
-//                                     (clientSchedules.filter((s) => s.attended)
-//                                       .length /
-//                                       clientSchedules.length) *
-//                                       100,
-//                                   )
-//                                 : 0}
-//                               %
-//                             </Typography>
-//                           </Grid>
-//                         </Grid>
-//                       </Box>
-//                     </>
-//                   ) : (
-//                     <Typography variant="body2" color="text.secondary">
-//                       Sin horarios programados
-//                     </Typography>
-//                   )}
-//                 </AccordionDetails>
-//               </Accordion>
-//             </>
-//           )}
-//         </Box>
-//       </Modal>
-
-//       <ActivityPricesManager
-//         open={openPricesManager}
-//         onClose={handleClosePricesManager}
-//         onActivityUpdate={handleActivityUpdate}
-//       />
-//       <ScheduleAssignmentModal
-//         open={openScheduleAssignment}
-//         onClose={handleCloseScheduleAssignment}
-//         client={clientForSchedule}
-//         onSuccess={() => {
-//           setIsChange(true);
-//         }}
-//       />
-//     </div>
-//   );
-// };
-
-// export default ClientsList;
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -1763,8 +37,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import HistoryIcon from "@mui/icons-material/History";
 import InfoIcon from "@mui/icons-material/Info";
-
-import FixClientData from "./FixClientData";
+import AccessTimeFilledIcon from "@mui/icons-material/AccessTimeFilled";
 
 import {
   deleteDoc,
@@ -1773,21 +46,20 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  Timestamp,
 } from "firebase/firestore";
 import { useState, useEffect } from "react";
 import { useActivities } from "../activities/useActivities";
 import { db } from "../../../firebaseConfig";
 import { ClientForm } from "./ClientForm";
 import { ActivityPricesManager } from "../activities/ActivityPricesManager";
-import { Timestamp } from "firebase/firestore";
 import Swal from "sweetalert2";
 import ActivityStats from "../activities/ActivityStats";
 import MonthlyBillingManager from "./MonthlyBillingManager";
-import AccessTimeFilledIcon from "@mui/icons-material/AccessTimeFilled";
 import { ScheduleAssignmentModal } from "./ScheduleAssignmentModal ";
+import FixClientData from "./FixClientData";
 
-// import ResetDebts from "./ResetDebts";
-// import RevertBilling from "./RevertBilling";
+// ─── constantes ─────────────────────────────────────────────────────────────
 
 const modalStyle = {
   position: "absolute",
@@ -1805,21 +77,19 @@ const modalStyle = {
 };
 
 const profileModalStyle = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: "90vw",
+  ...modalStyle,
   maxWidth: 500,
   maxHeight: "90vh",
-  bgcolor: "background.paper",
-  borderRadius: 2,
-  boxShadow: 24,
-  p: 2,
-  overflow: "auto",
 };
 
-const daysOfWeek = [
+const PROPORCIONES = [
+  { label: "Mes completo", factor: 1 },
+  { label: "3/4 del mes", factor: 0.75 },
+  { label: "1/2 mes", factor: 0.5 },
+  { label: "1/4 del mes", factor: 0.25 },
+];
+
+const DAYS_OF_WEEK = [
   { key: "sunday", label: "Dom", value: 0 },
   { key: "monday", label: "Lun", value: 1 },
   { key: "tuesday", label: "Mar", value: 2 },
@@ -1829,65 +99,81 @@ const daysOfWeek = [
   { key: "saturday", label: "Sáb", value: 6 },
 ];
 
-// Opciones de proporción del mes
-const proporciones = [
-  { label: "Mes completo", factor: 1 },
-  { label: "3/4 del mes", factor: 0.75 },
-  { label: "1/2 mes", factor: 0.5 },
-  { label: "1/4 del mes", factor: 0.25 },
-];
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+const calcularPrecio = (actividadLabel, proporcion, activities) => {
+  const actividad = activities.find((a) => a.label === actividadLabel);
+  if (!actividad) return 0;
+  return Math.round((actividad.valor * proporcion) / 100) * 100;
+};
+
+const horaActual = () =>
+  new Date().toLocaleTimeString("es-AR", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const fechaActual = () => new Date().toLocaleDateString("es-AR");
+
+const pagoVacio = () => ({
+  concepto: "",
+  metodo: "",
+  monto: "",
+  fecha: fechaActual(),
+  hora: horaActual(),
+});
+
+// ─── componente ─────────────────────────────────────────────────────────────
 
 const ClientsList = ({ clients = [], setIsChange }) => {
+  // ── Modales
   const [openForm, setOpenForm] = useState(false);
   const [openProfile, setOpenProfile] = useState(false);
   const [openPricesManager, setOpenPricesManager] = useState(false);
   const [openPaymentModal, setOpenPaymentModal] = useState(false);
+  const [openScheduleAssignment, setOpenScheduleAssignment] = useState(false);
+
+  // ── Selección
   const [clientSelected, setClientSelected] = useState(null);
+  const [clientForSchedule, setClientForSchedule] = useState(null);
+
+  // ── Filtros
   const [actividadFilter, setActividadFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // ── Perfil: horarios
   const [clientSchedules, setClientSchedules] = useState([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
-  const [avisoSaldo, setAvisoSaldo] = useState("");
 
+  // ── Modal de pago
+  const [nuevoPago, setNuevoPago] = useState(pagoVacio());
   const [tipoPago, setTipoPago] = useState("normal");
   const [mesesAdelantados, setMesesAdelantados] = useState(1);
   const [fechaInicioAdelantado, setFechaInicioAdelantado] = useState("");
   const [cobrarSinDeuda, setCobrarSinDeuda] = useState(false);
-
-  const [openScheduleAssignment, setOpenScheduleAssignment] = useState(false);
-  const [clientForSchedule, setClientForSchedule] = useState(null);
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Actividad y proporción elegidas en el modal de pago
-  // La actividad SE GUARDA en el perfil si cambia
-  // La proporción es SOLO para calcular el monto, NO se guarda
   const [actividadPago, setActividadPago] = useState("");
   const [proporcionPago, setProporcionPago] = useState(1);
-
-  const [nuevoPago, setNuevoPago] = useState({
-    concepto: "",
-    metodo: "",
-    monto: "",
-    fecha: new Date().toLocaleDateString("es-AR"),
-    hora: new Date().toLocaleTimeString("es-AR", {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-  });
+  const [avisoSaldo, setAvisoSaldo] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { activities = [], reloadActivities } = useActivities();
+
+  // ── Precio calculado en tiempo real
+  const precioPago = calcularPrecio(actividadPago, proporcionPago, activities);
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // HANDLERS — modales
+  // ────────────────────────────────────────────────────────────────────────────
 
   const handleCloseForm = () => setOpenForm(false);
   const handleCloseProfile = () => {
     setOpenProfile(false);
     setClientSchedules([]);
   };
-
   const handleClosePricesManager = () => setOpenPricesManager(false);
 
-  const handleClosePaymentModal = () => {
+  const resetPaymentModal = () => {
     setIsSubmitting(false);
     setOpenPaymentModal(false);
     setClientSelected(null);
@@ -1897,17 +183,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
     setCobrarSinDeuda(false);
     setActividadPago("");
     setProporcionPago(1);
-    setNuevoPago({
-      concepto: "",
-      metodo: "",
-      monto: "",
-      fecha: new Date().toLocaleDateString("es-AR"),
-      hora: new Date().toLocaleTimeString("es-AR", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    });
+    setNuevoPago(pagoVacio());
     setAvisoSaldo("");
   };
 
@@ -1916,216 +192,156 @@ const ClientsList = ({ clients = [], setIsChange }) => {
     setOpenForm(true);
   };
 
-  // Calcula el precio usando la actividad y proporción del modal
-  // NO usa los del perfil del cliente para este cálculo
-  const calcularPrecio = (actividadLabel, proporcion) => {
-    const actividad = activities.find((a) => a.label === actividadLabel);
-    if (!actividad) return 0;
-    return Math.round((actividad.valor * proporcion) / 100) * 100;
-  };
-
+  // Calcula la fecha de inicio sugerida para pagos adelantados
   const calcularFechaInicioAdelantado = (client) => {
     const hoy = new Date();
-    const ultimoMesFacturado = client.ultimoMesFacturado;
-
-    if (ultimoMesFacturado) {
-      const [anio, mes] = ultimoMesFacturado.split("-").map(Number);
-      const siguienteMes = new Date(anio, mes, 1);
-      return siguienteMes.toISOString().split("T")[0];
-    } else {
-      const mesActual = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-      return mesActual.toISOString().split("T")[0];
+    if (client.ultimoMesFacturado) {
+      // Si ya tiene mes facturado, el inicio es el mes SIGUIENTE al último facturado
+      const [anio, mes] = client.ultimoMesFacturado.split("-").map(Number);
+      // new Date(anio, mes, 1) => mes es 1-indexed del string, pero Date es 0-indexed,
+      // entonces mes sin restar 1 ya apunta al mes siguiente. Ej: "2026-05" => mes=5 => new Date(2026,5,1) = junio ✅
+      return new Date(anio, mes, 1).toISOString().split("T")[0];
     }
+    // Sin historial: el pago adelantado cubre el MES SIGUIENTE al actual
+    return new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1)
+      .toISOString()
+      .split("T")[0];
   };
 
   const handleOpenPaymentModal = (client) => {
     setClientSelected(client);
     setCobrarSinDeuda(false);
-    // Precargar actividad y proporción actuales del cliente
     setActividadPago(client.actividad || "");
     setProporcionPago(client.proporcion || 1);
 
-    let aviso = "";
     const deudaTotal = (client.debt || 0) + (client.deudaAnterior || 0);
-
+    let aviso = "";
     if (client.saldoFavor > 0) {
       aviso = `💚 Saldo a favor: $${client.saldoFavor.toLocaleString("es-AR")}`;
     } else if (deudaTotal > 0) {
-      if (client.deudaAnterior && client.deudaAnterior > 0) {
-        aviso = `💰 Deuda total: $${deudaTotal.toLocaleString(
-          "es-AR",
-        )} (Meses anteriores: $${client.deudaAnterior.toLocaleString(
-          "es-AR",
-        )} + Mes actual: $${(client.debt || 0).toLocaleString("es-AR")})`;
-      } else {
-        aviso = `💰 Deuda mes actual: $${(client.debt || 0).toLocaleString("es-AR")}`;
-      }
+      aviso =
+        client.deudaAnterior > 0
+          ? `💰 Deuda total: $${deudaTotal.toLocaleString("es-AR")} (Anterior: $${client.deudaAnterior.toLocaleString("es-AR")} + Mes actual: $${(client.debt || 0).toLocaleString("es-AR")})`
+          : `💰 Deuda mes actual: $${(client.debt || 0).toLocaleString("es-AR")}`;
     } else {
       aviso = "✅ Al día - Sin deudas";
     }
     setAvisoSaldo(aviso);
 
-    const conceptoPrecargado = client.actividad || "Pago de clase";
-    const fechaInicio = calcularFechaInicioAdelantado(client);
-    setFechaInicioAdelantado(fechaInicio);
-
+    setFechaInicioAdelantado(calcularFechaInicioAdelantado(client));
     setNuevoPago({
-      concepto: conceptoPrecargado,
-      metodo: "",
-      monto: "",
-      fecha: new Date().toLocaleDateString("es-AR"),
-      hora: new Date().toLocaleTimeString("es-AR", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      ...pagoVacio(),
+      concepto: client.actividad || "Pago de clase",
     });
-
     setOpenPaymentModal(true);
   };
 
   const handleOpenProfile = async (client) => {
     setClientSelected(client);
     setLoadingSchedules(true);
+    setOpenProfile(true);
 
     try {
-      const schedulesRef = collection(db, "schedules");
-      const schedulesSnap = await getDocs(schedulesRef);
-
-      const clientSchedulesList = [];
-
-      schedulesSnap.docs.forEach((doc) => {
-        const scheduleData = doc.data();
-        const clientInSchedule = scheduleData.clients?.find(
-          (c) => c.id === client.id,
-        );
-
+      const schedulesSnap = await getDocs(collection(db, "schedules"));
+      const lista = [];
+      schedulesSnap.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const clientInSchedule = data.clients?.find((c) => c.id === client.id);
         if (clientInSchedule) {
-          clientSchedulesList.push({
-            id: doc.id,
-            date: scheduleData.date,
-            hour: scheduleData.hour,
+          lista.push({
+            id: docSnap.id,
+            date: data.date,
+            hour: data.hour,
             attended: clientInSchedule.attended || false,
           });
         }
       });
-
-      clientSchedulesList.sort((a, b) => {
-        if (a.date === b.date) return a.hour.localeCompare(b.hour);
-        return a.date.localeCompare(b.date);
-      });
-
-      setClientSchedules(clientSchedulesList);
+      lista.sort((a, b) =>
+        a.date === b.date
+          ? a.hour.localeCompare(b.hour)
+          : a.date.localeCompare(b.date),
+      );
+      setClientSchedules(lista);
     } catch (error) {
-      console.error("Error al cargar horarios del cliente:", error);
+      console.error("Error al cargar horarios:", error);
     } finally {
       setLoadingSchedules(false);
     }
-
-    setOpenProfile(true);
   };
 
-  const handleOpenPricesManager = () => setOpenPricesManager(true);
-
-  const handleActivityUpdate = () => {
-    reloadActivities();
-    setIsChange(true);
-  };
-
-  // Precio calculado en tiempo real según actividad y proporción elegidas en el modal
-  const precioPago = calcularPrecio(actividadPago, proporcionPago);
+  // ────────────────────────────────────────────────────────────────────────────
+  // AVISO DE SALDO — se recalcula con cada cambio de monto/tipo/proporción
+  // ────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (clientSelected && nuevoPago.monto) {
-      const monto = parseInt(nuevoPago.monto);
-      if (isNaN(monto) || monto <= 0) return;
+    if (!clientSelected || !nuevoPago.monto) return;
+    const monto = parseInt(nuevoPago.monto);
+    if (isNaN(monto) || monto <= 0) return;
 
-      let avisoDetallado = "";
-      const saldoFavorActual = clientSelected.saldoFavor || 0;
-      const deudaActual = clientSelected.debt || 0;
-      const deudaAnterior = clientSelected.deudaAnterior || 0;
-      const deudaTotal = deudaActual + deudaAnterior;
+    const saldoFavor = clientSelected.saldoFavor || 0;
+    const deudaActual = clientSelected.debt || 0;
+    const deudaAnterior = clientSelected.deudaAnterior || 0;
+    const deudaTotal = deudaActual + deudaAnterior;
+    let aviso = "";
 
-      if (tipoPago === "adelantado") {
-        const montoTotal = precioPago * mesesAdelantados;
-        let montoAPagar = montoTotal;
+    if (tipoPago === "adelantado") {
+      const montoTotal = precioPago * mesesAdelantados;
+      let montoNeto = montoTotal - saldoFavor;
+      if (montoNeto < 0) montoNeto = 0;
 
-        if (saldoFavorActual > 0) {
-          if (saldoFavorActual >= montoTotal) {
-            avisoDetallado = `✅ El saldo a favor ($${saldoFavorActual.toLocaleString(
-              "es-AR",
-            )}) cubre los ${mesesAdelantados} mes(es). Sobrante: $${(
-              saldoFavorActual - montoTotal
-            ).toLocaleString("es-AR")}`;
-          } else {
-            montoAPagar = montoTotal - saldoFavorActual;
-            avisoDetallado = `💰 Total: $${montoTotal.toLocaleString(
-              "es-AR",
-            )} - Saldo: $${saldoFavorActual.toLocaleString(
-              "es-AR",
-            )} = A pagar: $${montoAPagar.toLocaleString("es-AR")}`;
-          }
+      if (saldoFavor >= montoTotal) {
+        aviso = `✅ Saldo a favor ($${saldoFavor.toLocaleString("es-AR")}) cubre los ${mesesAdelantados} mes(es). Sobrante: $${(saldoFavor - montoTotal).toLocaleString("es-AR")}`;
+      } else if (saldoFavor > 0) {
+        aviso = `💰 Total: $${montoTotal.toLocaleString("es-AR")} - Saldo: $${saldoFavor.toLocaleString("es-AR")} = A pagar: $${montoNeto.toLocaleString("es-AR")}`;
+      } else {
+        aviso = `📅 ${mesesAdelantados} mes(es) x $${precioPago.toLocaleString("es-AR")} = $${montoTotal.toLocaleString("es-AR")}`;
+      }
+      if (monto !== montoNeto && montoNeto > 0) {
+        aviso += `\n💡 Sugerido: $${montoNeto.toLocaleString("es-AR")}`;
+      }
+    } else {
+      if (cobrarSinDeuda) {
+        const sobrante = monto - deudaTotal;
+        aviso =
+          sobrante >= 0
+            ? `✅ Se cobrará sin deuda. Cliente quedará "Al día"${sobrante > 0 ? ` con $${sobrante.toLocaleString("es-AR")} a favor` : ""}`
+            : `✅ Se cobrará sin deuda. Cliente quedará "Al día" (se condona $${Math.abs(sobrante).toLocaleString("es-AR")})`;
+      } else if (saldoFavor > 0) {
+        aviso = `💚 Nuevo saldo a favor: $${(saldoFavor + monto).toLocaleString("es-AR")}`;
+      } else if (deudaTotal > 0) {
+        if (monto > deudaTotal) {
+          aviso = `🎉 Cubre toda la deuda ($${deudaTotal.toLocaleString("es-AR")}) + $${(monto - deudaTotal).toLocaleString("es-AR")} a favor`;
+        } else if (monto === deudaTotal) {
+          aviso = `✅ Cubre exactamente la deuda total ($${deudaTotal.toLocaleString("es-AR")})`;
         } else {
-          avisoDetallado = `📅 ${mesesAdelantados} mes(es) x $${precioPago.toLocaleString(
-            "es-AR",
-          )} = $${montoTotal.toLocaleString("es-AR")}`;
-        }
-
-        if (monto !== montoAPagar && montoAPagar > 0) {
-          avisoDetallado += `\n💡 Sugerido: $${montoAPagar.toLocaleString("es-AR")}`;
+          const restante = deudaTotal - monto;
+          if (deudaAnterior > 0 && monto >= deudaAnterior) {
+            aviso = `✅ Cubre deuda anterior ($${deudaAnterior.toLocaleString("es-AR")}) + $${(monto - deudaAnterior).toLocaleString("es-AR")} del mes actual. Restante: $${restante.toLocaleString("es-AR")}`;
+          } else if (deudaAnterior > 0) {
+            aviso = `⚠️ Se aplica a deuda anterior. Nueva anterior: $${(deudaAnterior - monto).toLocaleString("es-AR")}. Restante total: $${restante.toLocaleString("es-AR")}`;
+          } else {
+            aviso = `⚠️ Cubre $${monto.toLocaleString("es-AR")} de deuda. Restante: $${restante.toLocaleString("es-AR")}`;
+          }
         }
       } else {
-        if (cobrarSinDeuda) {
-          if (monto >= deudaTotal) {
-            const sobrante = monto - deudaTotal;
-            avisoDetallado = `✅ Se cobrará sin deuda. Cliente quedará "Al día"${
-              sobrante > 0
-                ? ` con $${sobrante.toLocaleString("es-AR")} a favor`
-                : ""
-            }`;
-          } else {
-            const diferencia = deudaTotal - monto;
-            avisoDetallado = `✅ Se cobrará sin deuda. Cliente quedará "Al día" (se le descuenta $${diferencia.toLocaleString("es-AR")})`;
-          }
-        } else {
-          if (saldoFavorActual > 0) {
-            avisoDetallado = `💚 Nuevo saldo a favor: $${(saldoFavorActual + monto).toLocaleString("es-AR")}`;
-          } else if (deudaTotal > 0) {
-            if (monto > deudaTotal) {
-              avisoDetallado = `🎉 Cubre toda la deuda ($${deudaTotal.toLocaleString("es-AR")}) + $${(monto - deudaTotal).toLocaleString("es-AR")} a favor`;
-            } else if (monto === deudaTotal) {
-              avisoDetallado = `✅ Cubre exactamente toda la deuda ($${deudaTotal.toLocaleString("es-AR")})`;
-            } else {
-              const deudaRestante = deudaTotal - monto;
-              if (deudaAnterior > 0) {
-                if (monto >= deudaAnterior) {
-                  const sobrante = monto - deudaAnterior;
-                  avisoDetallado = `✅ Cubre deuda anterior completa ($${deudaAnterior.toLocaleString("es-AR")}) + $${sobrante.toLocaleString("es-AR")} de mes actual. Restante: $${deudaRestante.toLocaleString("es-AR")}`;
-                } else {
-                  avisoDetallado = `⚠️ Se aplica a deuda anterior. Nueva deuda anterior: $${(deudaAnterior - monto).toLocaleString("es-AR")}. Total restante: $${deudaRestante.toLocaleString("es-AR")}`;
-                }
-              } else {
-                avisoDetallado = `⚠️ Cubre $${monto.toLocaleString("es-AR")} de deuda. Restante: $${deudaRestante.toLocaleString("es-AR")}`;
-              }
-            }
-          } else {
-            avisoDetallado = `💚 Generará saldo a favor de $${monto.toLocaleString("es-AR")}`;
-          }
-        }
+        aviso = `💚 Generará saldo a favor de $${monto.toLocaleString("es-AR")}`;
       }
-
-      setAvisoSaldo(avisoDetallado);
     }
+    setAvisoSaldo(aviso);
   }, [
     nuevoPago.monto,
-    clientSelected,
     tipoPago,
     mesesAdelantados,
     cobrarSinDeuda,
     actividadPago,
     proporcionPago,
     precioPago,
+    clientSelected,
   ]);
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // REGISTRAR PAGO
+  // ────────────────────────────────────────────────────────────────────────────
 
   const handleRegistrarPago = async () => {
     if (isSubmitting) return;
@@ -2136,11 +352,10 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "Complete todos los campos obligatorios.",
+          text: "Completá todos los campos obligatorios.",
         });
         return;
       }
-
       if (!actividadPago) {
         Swal.fire({
           icon: "warning",
@@ -2154,47 +369,45 @@ const ClientsList = ({ clients = [], setIsChange }) => {
       const [dia, mes, anio] = nuevoPago.fecha.split("/").map(Number);
       const mesPago = `${anio}-${String(mes).padStart(2, "0")}`;
       const fechaPago = new Date(anio, mes - 1, dia);
-
-      // ✅ Actividad cambia en el perfil si es distinta
       const actividadCambio = actividadPago !== clientSelected.actividad;
+      const labelProporcion =
+        PROPORCIONES.find((p) => p.factor === proporcionPago)?.label || "";
 
       if (tipoPago === "adelantado") {
-        const montoTotalNecesario = precioPago * mesesAdelantados;
-        const saldoFavorActual = clientSelected.saldoFavor || 0;
+        // ── Pago adelantado ──────────────────────────────────────────────────
+        const montoTotal = precioPago * mesesAdelantados;
+        const saldoFavor = clientSelected.saldoFavor || 0;
+        const montoFaltante = Math.max(0, montoTotal - saldoFavor);
 
-        let montoFaltante = montoTotalNecesario - saldoFavorActual;
-        if (montoFaltante < 0) montoFaltante = 0;
-
-        if (
-          saldoFavorActual < montoTotalNecesario &&
-          montoPagado < montoFaltante
-        ) {
+        if (saldoFavor < montoTotal && montoPagado < montoFaltante) {
           Swal.fire({
             icon: "warning",
             title: "Monto insuficiente",
-            text: `Para ${mesesAdelantados} mes(es) de ${actividadPago} (${proporciones.find((p) => p.factor === proporcionPago)?.label}) necesitás pagar al menos $${montoFaltante.toLocaleString("es-AR")}`,
+            text: `Necesitás pagar al menos $${montoFaltante.toLocaleString("es-AR")} para cubrir ${mesesAdelantados} mes(es).`,
           });
           return;
         }
 
-        const saldoTotal = saldoFavorActual + montoPagado;
+        const saldoTotal = saldoFavor + montoPagado;
         const nuevoSaldoFavor =
-          saldoTotal >= montoTotalNecesario
-            ? saldoTotal - montoTotalNecesario
-            : 0;
+          saldoTotal >= montoTotal ? saldoTotal - montoTotal : 0;
 
-        const fechaInicio = new Date(fechaInicioAdelantado);
-        const ultimoMesPagado = new Date(
-          fechaInicio.getFullYear(),
-          fechaInicio.getMonth() + mesesAdelantados - 1,
-          1,
-        );
-        const ultimoMesFacturado = `${ultimoMesPagado.getFullYear()}-${String(
-          ultimoMesPagado.getMonth() + 1,
-        ).padStart(2, "0")}`;
+        // ✅ Parsear YYYY-MM-DD directo para evitar bug de timezone
+        // new Date("2026-06-01") en UTC-3 da 31/05 → mes incorrecto
+        const [inicioAnio, inicioMes] = fechaInicioAdelantado
+          .split("-")
+          .map(Number);
+        const mesFinNum = inicioMes + mesesAdelantados - 1;
+        const anioFin = inicioAnio + Math.floor((mesFinNum - 1) / 12);
+        const mesFinAjustado = ((mesFinNum - 1) % 12) + 1;
+        const ultimoMesFacturado = `${anioFin}-${String(mesFinAjustado).padStart(2, "0")}`;
 
-        const labelProporcion =
-          proporciones.find((p) => p.factor === proporcionPago)?.label || "";
+        // ✅ No pisar si el existente es posterior
+        const ultimoMesExistente = clientSelected.ultimoMesFacturado || "";
+        const nuevoUltimoMes =
+          ultimoMesExistente > ultimoMesFacturado
+            ? ultimoMesExistente
+            : ultimoMesFacturado;
 
         const pagoFinal = {
           fecha: nuevoPago.fecha,
@@ -2218,14 +431,8 @@ const ClientsList = ({ clients = [], setIsChange }) => {
           },
         };
 
-        // ✅ No pisar ultimoMesFacturado si el existente es posterior
-        const ultimoMesExistente = clientSelected.ultimoMesFacturado || "";
-        const nuevoUltimoMes =
-          ultimoMesExistente > ultimoMesFacturado
-            ? ultimoMesExistente
-            : ultimoMesFacturado;
-
-        const updateData = {
+        await addDoc(collection(db, "payments"), pagoFinal);
+        await updateDoc(doc(db, "clients", clientSelected.id), {
           ultimoPago: nuevoPago.fecha,
           debt: 0,
           deudaAnterior: 0,
@@ -2233,42 +440,79 @@ const ClientsList = ({ clients = [], setIsChange }) => {
           estado: "Al día",
           ultimoMesFacturado: nuevoUltimoMes,
           mesesPagadosAdelantado: mesesAdelantados,
-          // ✅ Actualiza actividad en el perfil si cambió; proporción NO se guarda
           ...(actividadCambio && { actividad: actividadPago }),
-        };
+        });
 
-        try {
-          await addDoc(collection(db, "payments"), pagoFinal);
-          const clientRef = doc(db, "clients", clientSelected.id);
-          await updateDoc(clientRef, updateData);
+        resetPaymentModal();
+        setIsChange(true);
 
-          handleClosePaymentModal();
-          setIsChange(true);
-
-          Swal.fire({
-            icon: "success",
-            title: "Pago adelantado registrado",
-            html: `
-              <p>✅ ${mesesAdelantados} mes(es) de <strong>${actividadPago}</strong> (${labelProporcion}) pagado(s)</p>
-              <p>📅 Cobertura hasta: ${new Date(ultimoMesFacturado + "-01").toLocaleDateString("es-AR", { year: "numeric", month: "long" })}</p>
-              ${nuevoSaldoFavor > 0 ? `<p>💚 Saldo a favor: $${nuevoSaldoFavor.toLocaleString("es-AR")}</p>` : ""}
-              ${actividadCambio ? `<p>📝 Actividad actualizada a <strong>${actividadPago}</strong></p>` : ""}
-            `,
-            timer: 3000,
-            showConfirmButton: false,
-          });
-        } catch (error) {
-          console.error("Error al registrar pago adelantado:", error);
-          Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: "Hubo un error al registrar el pago adelantado",
-          });
-        }
+        Swal.fire({
+          icon: "success",
+          title: "Pago adelantado registrado",
+          html: `
+            <p>✅ ${mesesAdelantados} mes(es) de <strong>${actividadPago}</strong> (${labelProporcion}) pagado(s)</p>
+            <p>📅 Cobertura hasta: ${new Date(ultimoMesFacturado + "-01").toLocaleDateString("es-AR", { year: "numeric", month: "long" })}</p>
+            ${nuevoSaldoFavor > 0 ? `<p>💚 Saldo a favor: $${nuevoSaldoFavor.toLocaleString("es-AR")}</p>` : ""}
+            ${actividadCambio ? `<p>📝 Actividad actualizada a <strong>${actividadPago}</strong></p>` : ""}
+          `,
+          timer: 3500,
+          showConfirmButton: false,
+        });
       } else {
-        // Pago normal
-        const labelProporcion =
-          proporciones.find((p) => p.factor === proporcionPago)?.label || "";
+        // ── Pago normal ──────────────────────────────────────────────────────
+        const deudaActual = clientSelected.debt || 0;
+        const saldoFavor = clientSelected.saldoFavor || 0;
+        const deudaAnterior = clientSelected.deudaAnterior || 0;
+        const deudaTotal = deudaActual + deudaAnterior;
+
+        let nuevaDeuda = 0;
+        let nuevoSaldoFavor = 0;
+        let nuevoEstado = "Al día";
+        let nuevaDeudaAnterior = 0;
+
+        if (cobrarSinDeuda) {
+          // Acepta como válido sin importar si cubre la deuda
+          nuevoSaldoFavor =
+            montoPagado > deudaTotal ? montoPagado - deudaTotal : 0;
+          nuevaDeuda = 0;
+          nuevaDeudaAnterior = 0;
+          nuevoEstado = "Al día";
+        } else if (saldoFavor > 0) {
+          // Ya tiene saldo a favor: el pago se suma
+          nuevoSaldoFavor = saldoFavor + montoPagado;
+          nuevaDeuda = 0;
+          nuevaDeudaAnterior = 0;
+          nuevoEstado = "Al día";
+        } else if (deudaTotal > 0) {
+          if (montoPagado >= deudaTotal) {
+            nuevoSaldoFavor = montoPagado - deudaTotal;
+            nuevaDeuda = 0;
+            nuevaDeudaAnterior = 0;
+            nuevoEstado = "Al día";
+          } else {
+            // Pago parcial: primero cubre deuda anterior
+            nuevoSaldoFavor = 0;
+            if (montoPagado >= deudaAnterior) {
+              nuevaDeudaAnterior = 0;
+              nuevaDeuda = deudaActual - (montoPagado - deudaAnterior);
+            } else {
+              nuevaDeudaAnterior = deudaAnterior - montoPagado;
+              nuevaDeuda = deudaActual;
+            }
+            nuevoEstado = "Deudor";
+          }
+        } else {
+          // Sin deuda: todo pasa a saldo a favor
+          nuevoSaldoFavor = montoPagado;
+          nuevaDeuda = 0;
+          nuevaDeudaAnterior = 0;
+          nuevoEstado = "Al día";
+        }
+
+        // ✅ No pisar ultimoMesFacturado si el existente es posterior
+        const ultimoMesExistente = clientSelected.ultimoMesFacturado || "";
+        const nuevoUltimoMes =
+          ultimoMesExistente > mesPago ? ultimoMesExistente : mesPago;
 
         const pagoFinal = {
           fecha: nuevoPago.fecha,
@@ -2289,103 +533,48 @@ const ClientsList = ({ clients = [], setIsChange }) => {
           },
         };
 
-        const deudaActual = clientSelected.debt || 0;
-        const saldoFavorActual = clientSelected.saldoFavor || 0;
-        const deudaAnterior = clientSelected.deudaAnterior || 0;
-        const deudaTotal = deudaActual + deudaAnterior;
-
-        let nuevaDeuda = 0;
-        let nuevoSaldoFavor = 0;
-        let nuevoEstado = "Al día";
-        let nuevaDeudaAnterior = 0;
-
-        if (cobrarSinDeuda) {
-          nuevaDeuda = 0;
-          nuevaDeudaAnterior = 0;
-          nuevoSaldoFavor =
-            montoPagado > deudaTotal ? montoPagado - deudaTotal : 0;
-          nuevoEstado = "Al día";
-        } else {
-          if (saldoFavorActual > 0) {
-            nuevoSaldoFavor = saldoFavorActual + montoPagado;
-            nuevaDeuda = 0;
-            nuevaDeudaAnterior = 0;
-            nuevoEstado = "Al día";
-          } else if (deudaTotal > 0) {
-            if (montoPagado >= deudaTotal) {
-              nuevoSaldoFavor = montoPagado - deudaTotal;
-              nuevaDeuda = 0;
-              nuevaDeudaAnterior = 0;
-              nuevoEstado = "Al día";
-            } else {
-              nuevoSaldoFavor = 0;
-              if (montoPagado >= deudaAnterior) {
-                const sobrante = montoPagado - deudaAnterior;
-                nuevaDeudaAnterior = 0;
-                nuevaDeuda = deudaActual - sobrante;
-              } else {
-                nuevaDeudaAnterior = deudaAnterior - montoPagado;
-                nuevaDeuda = deudaActual;
-              }
-              nuevoEstado = "Deudor";
-            }
-          } else {
-            nuevoSaldoFavor = montoPagado;
-            nuevaDeuda = 0;
-            nuevaDeudaAnterior = 0;
-            nuevoEstado = "Al día";
-          }
-        }
-
-        // ✅ No pisar ultimoMesFacturado si el cliente tiene uno posterior
-        const ultimoMesExistente = clientSelected.ultimoMesFacturado || "";
-        const nuevoUltimoMes =
-          ultimoMesExistente > mesPago ? ultimoMesExistente : mesPago;
-
-        const updateData = {
+        await addDoc(collection(db, "payments"), pagoFinal);
+        await updateDoc(doc(db, "clients", clientSelected.id), {
           ultimoPago: nuevoPago.fecha,
           debt: nuevaDeuda,
           deudaAnterior: nuevaDeudaAnterior,
           saldoFavor: nuevoSaldoFavor,
           estado: nuevoEstado,
           ultimoMesFacturado: nuevoUltimoMes,
-          // ✅ Actualiza actividad en el perfil si cambió; proporción NO se guarda
           ...(actividadCambio && { actividad: actividadPago }),
-        };
+        });
 
-        try {
-          await addDoc(collection(db, "payments"), pagoFinal);
-          const clientRef = doc(db, "clients", clientSelected.id);
-          await updateDoc(clientRef, updateData);
+        resetPaymentModal();
+        setIsChange(true);
 
-          handleClosePaymentModal();
-          setIsChange(true);
-
-          Swal.fire({
-            icon: "success",
-            title: cobrarSinDeuda
-              ? "Pago sin deuda registrado"
-              : "Pago registrado",
-            html: `
-              <p>${cobrarSinDeuda ? "El pago fue aceptado sin generar deuda ✅" : "El pago fue registrado exitosamente ✅"}</p>
-              ${actividadCambio ? `<p>📝 Actividad actualizada a <strong>${actividadPago}</strong></p>` : ""}
-            `,
-            timer: 2000,
-            showConfirmButton: false,
-          });
-        } catch (error) {
-          console.error("Error al registrar pago:", error);
-          Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: "Hubo un error al registrar el pago",
-          });
-        }
+        Swal.fire({
+          icon: "success",
+          title: cobrarSinDeuda
+            ? "Pago sin deuda registrado"
+            : "Pago registrado",
+          html: `
+            <p>${cobrarSinDeuda ? "El pago fue aceptado sin generar deuda ✅" : "El pago fue registrado exitosamente ✅"}</p>
+            ${actividadCambio ? `<p>📝 Actividad actualizada a <strong>${actividadPago}</strong></p>` : ""}
+          `,
+          timer: 2000,
+          showConfirmButton: false,
+        });
       }
+    } catch (error) {
+      console.error("Error al registrar pago:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Hubo un error al registrar el pago.",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // ELIMINAR CLIENTE
+  // ────────────────────────────────────────────────────────────────────────────
 
   const deleteClient = (id) => {
     Swal.fire({
@@ -2407,30 +596,29 @@ const ClientsList = ({ clients = [], setIsChange }) => {
     });
   };
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // HELPERS DE HORARIOS
+  // ────────────────────────────────────────────────────────────────────────────
+
   const getDayName = (dateString) => {
-    const date = new Date(dateString);
-    const dayValue = date.getDay();
-    return daysOfWeek.find((d) => d.value === dayValue)?.label || "";
+    const dayValue = new Date(dateString).getDay();
+    return DAYS_OF_WEEK.find((d) => d.value === dayValue)?.label || "";
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-ES", {
+  const formatDate = (dateString) =>
+    new Date(dateString).toLocaleDateString("es-ES", {
       day: "2-digit",
       month: "2-digit",
     });
-  };
 
   const getScheduleSummary = (schedules) => {
     const summary = {};
-    schedules.forEach((schedule) => {
-      const date = new Date(schedule.date);
-      const dayValue = date.getDay();
-      const dayName = getDayName(schedule.date);
-      if (!summary[dayValue]) {
+    schedules.forEach((s) => {
+      const dayValue = new Date(s.date).getDay();
+      const dayName = getDayName(s.date);
+      if (!summary[dayValue])
         summary[dayValue] = { day: dayName, hours: new Set() };
-      }
-      summary[dayValue].hours.add(schedule.hour);
+      summary[dayValue].hours.add(s.hour);
     });
     return Object.values(summary).map((item) => ({
       day: item.day,
@@ -2438,30 +626,26 @@ const ClientsList = ({ clients = [], setIsChange }) => {
     }));
   };
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // FILTRADO
+  // ────────────────────────────────────────────────────────────────────────────
+
   const filteredClients = Array.isArray(clients)
-    ? clients.filter((client) => {
-        const matchesActividad = actividadFilter
-          ? client.actividad === actividadFilter
+    ? clients.filter((c) => {
+        const matchAct = actividadFilter
+          ? c.actividad === actividadFilter
           : true;
-        const matchesSearch =
-          `${client.name || ""} ${client.lastName || ""} ${client.dni || ""}`
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase());
-        return matchesActividad && matchesSearch;
+        const matchSearch = `${c.name || ""} ${c.lastName || ""} ${c.dni || ""}`
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+        return matchAct && matchSearch;
       })
     : [];
 
-  const handleOpenScheduleAssignment = (client) => {
-    setClientForSchedule(client);
-    setOpenScheduleAssignment(true);
-  };
+  // ────────────────────────────────────────────────────────────────────────────
+  // BLOQUE REUTILIZABLE — actividad + proporción
+  // ────────────────────────────────────────────────────────────────────────────
 
-  const handleCloseScheduleAssignment = () => {
-    setOpenScheduleAssignment(false);
-    setClientForSchedule(null);
-  };
-
-  // Bloque de selectores de actividad y proporción (se usa en ambos tipos de pago)
   const renderActividadYProporcion = () => (
     <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
       <Grid item xs={12}>
@@ -2492,7 +676,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
           value={proporcionPago}
           onChange={(e) => setProporcionPago(parseFloat(e.target.value))}
         >
-          {proporciones.map((p) => (
+          {PROPORCIONES.map((p) => (
             <MenuItem key={p.factor} value={p.factor}>
               {p.label}
             </MenuItem>
@@ -2514,7 +698,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
               display="block"
               color="text.secondary"
             >
-              Precio calculado para este pago:
+              Precio calculado:
             </Typography>
             <Typography
               variant="body2"
@@ -2528,6 +712,10 @@ const ClientsList = ({ clients = [], setIsChange }) => {
     </Grid>
   );
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ────────────────────────────────────────────────────────────────────────────
+
   return (
     <div style={{ marginTop: 20 }}>
       <ActivityStats
@@ -2535,6 +723,8 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         title="Resumen de Alumnos"
         entityLabel="alumnos"
       />
+
+      {/* ── Barra de acciones ── */}
       <div
         style={{
           display: "flex",
@@ -2575,21 +765,21 @@ const ClientsList = ({ clients = [], setIsChange }) => {
             sx={{ width: 120 }}
           >
             <MenuItem value="">Todas</MenuItem>
-            {Array.isArray(activities) &&
-              activities.map((actividad) => (
-                <MenuItem key={actividad.id} value={actividad.label}>
-                  {actividad.label}
-                </MenuItem>
-              ))}
+            {activities.map((a) => (
+              <MenuItem key={a.id} value={a.label}>
+                {a.label}
+              </MenuItem>
+            ))}
           </Select>
           <MonthlyBillingManager
             activities={activities}
             setIsChange={setIsChange}
           />
+          {/* <FixClientData /> */}
           <Button
             variant="outlined"
             startIcon={<SettingsIcon />}
-            onClick={handleOpenPricesManager}
+            onClick={() => setOpenPricesManager(true)}
             size="small"
           >
             Precios
@@ -2604,6 +794,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         </div>
       </div>
 
+      {/* ── Tabla ── */}
       <TableContainer component={Paper}>
         <Table
           sx={{ minWidth: 650 }}
@@ -2612,21 +803,16 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         >
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-                Nombre
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-                Apellido
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-                DNI
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-                Celular
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
-                Actividad
-              </TableCell>
+              {["Nombre", "Apellido", "DNI", "Celular", "Actividad"].map(
+                (col) => (
+                  <TableCell
+                    key={col}
+                    sx={{ fontWeight: "bold", fontSize: "0.875rem" }}
+                  >
+                    {col}
+                  </TableCell>
+                ),
+              )}
               <TableCell sx={{ fontWeight: "bold", fontSize: "0.875rem" }}>
                 <Tooltip title="Deuda del mes actual" arrow>
                   <span>Deuda</span>
@@ -2642,7 +828,6 @@ const ClientsList = ({ clients = [], setIsChange }) => {
               const deudaTotal =
                 (client.debt || 0) + (client.deudaAnterior || 0);
               const tieneDeudaAnterior = (client.deudaAnterior || 0) > 0;
-
               return (
                 <TableRow key={client.id}>
                   <TableCell
@@ -2699,7 +884,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                       </Typography>
                       {tieneDeudaAnterior && (
                         <Tooltip
-                          title={`Deuda anterior: ${client.deudaAnterior.toLocaleString("es-AR")} | Mes actual: ${(client.debt || 0).toLocaleString("es-AR")}`}
+                          title={`Anterior: $${client.deudaAnterior.toLocaleString("es-AR")} | Mes actual: $${(client.debt || 0).toLocaleString("es-AR")}`}
                           arrow
                         >
                           <InfoIcon
@@ -2731,7 +916,10 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                     <IconButton
-                      onClick={() => handleOpenScheduleAssignment(client)}
+                      onClick={() => {
+                        setClientForSchedule(client);
+                        setOpenScheduleAssignment(true);
+                      }}
                       color="secondary"
                       title="Asignar horarios"
                       size="small"
@@ -2746,10 +934,9 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         </Table>
       </TableContainer>
 
+      {/* ── Modal: formulario de cliente ── */}
       <Modal open={openForm} onClose={handleCloseForm}>
-        <Box
-          sx={{ ...modalStyle, width: "90vw", maxWidth: 600, height: "85vh" }}
-        >
+        <Box sx={{ ...modalStyle, maxWidth: 600, height: "85vh" }}>
           <ClientForm
             handleClose={handleCloseForm}
             setIsChange={setIsChange}
@@ -2759,14 +946,15 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         </Box>
       </Modal>
 
-      <Modal open={openPaymentModal} onClose={handleClosePaymentModal}>
+      {/* ── Modal: registrar pago ── */}
+      <Modal open={openPaymentModal} onClose={resetPaymentModal}>
         <Box sx={modalStyle}>
           <Typography variant="h6" sx={{ mb: 1, fontSize: "1.1rem" }}>
             Registrar Pago
           </Typography>
           {clientSelected && (
             <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
-              {clientSelected.name} {clientSelected.lastName} - DNI:{" "}
+              {clientSelected.name} {clientSelected.lastName} — DNI:{" "}
               {clientSelected.dni}
             </Typography>
           )}
@@ -2794,7 +982,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
             </RadioGroup>
           </Box>
 
-          {/* Pago Normal */}
+          {/* Pago normal */}
           {tipoPago === "normal" && clientSelected && (
             <Box sx={{ mb: 2, p: 1.5, bgcolor: "grey.50", borderRadius: 1 }}>
               <Typography
@@ -2803,9 +991,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
               >
                 Configuración del Pago
               </Typography>
-
               {renderActividadYProporcion()}
-
               {(clientSelected.debt || 0) +
                 (clientSelected.deudaAnterior || 0) >
                 0 && (
@@ -2833,7 +1019,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
             </Box>
           )}
 
-          {/* Pago Adelantado */}
+          {/* Pago adelantado */}
           {tipoPago === "adelantado" && clientSelected && (
             <Box sx={{ mb: 2, p: 2, bgcolor: "#e3f2fd", borderRadius: 1 }}>
               <Typography
@@ -2842,9 +1028,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
               >
                 Configuración de Pago Adelantado
               </Typography>
-
               {renderActividadYProporcion()}
-
               <Grid container spacing={2}>
                 <Grid item xs={6}>
                   <TextField
@@ -2854,8 +1038,8 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                     fullWidth
                     value={mesesAdelantados}
                     onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (val > 0 && val <= 12) setMesesAdelantados(val);
+                      const v = parseInt(e.target.value);
+                      if (v > 0 && v <= 12) setMesesAdelantados(v);
                     }}
                     inputProps={{ min: 1, max: 12 }}
                   />
@@ -2872,7 +1056,6 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                   />
                 </Grid>
               </Grid>
-
               <Box sx={{ mt: 1.5, p: 1, bgcolor: "white", borderRadius: 1 }}>
                 <Typography variant="caption" display="block">
                   <strong>Precio por mes:</strong> $
@@ -2882,7 +1065,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                   <strong>Total a pagar:</strong> $
                   {(precioPago * mesesAdelantados).toLocaleString("es-AR")}
                 </Typography>
-                {clientSelected.saldoFavor > 0 && (
+                {clientSelected?.saldoFavor > 0 && (
                   <>
                     <Typography
                       variant="caption"
@@ -2911,26 +1094,27 @@ const ClientsList = ({ clients = [], setIsChange }) => {
             </Box>
           )}
 
+          {/* Aviso de saldo */}
           {avisoSaldo && (
             <Alert
               severity={
                 avisoSaldo.includes("favor") ||
                 avisoSaldo.includes("exactamente") ||
                 avisoSaldo.includes("toda la deuda") ||
-                avisoSaldo.includes("cubre") ||
-                avisoSaldo.includes("condonan")
+                avisoSaldo.includes("Cubre")
                   ? "success"
                   : avisoSaldo.includes("Restante") ||
                       avisoSaldo.includes("anterior")
                     ? "warning"
                     : "info"
               }
-              sx={{ mb: 2, fontSize: "0.8rem" }}
+              sx={{ mb: 2, fontSize: "0.8rem", whiteSpace: "pre-line" }}
             >
               {avisoSaldo}
             </Alert>
           )}
 
+          {/* Campos de pago */}
           <Grid container spacing={1}>
             <Grid item xs={12}>
               <TextField
@@ -2956,7 +1140,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                 required
               >
                 <MenuItem value="efectivo">💵 Efectivo</MenuItem>
-                <MenuItem value="transferencia">✔ Transfer.</MenuItem>
+                <MenuItem value="transferencia">✔ Transferencia</MenuItem>
                 <MenuItem value="tarjeta">💳 Tarjeta</MenuItem>
               </TextField>
             </Grid>
@@ -3000,7 +1184,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
           <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
             <Button
               variant="outlined"
-              onClick={handleClosePaymentModal}
+              onClick={resetPaymentModal}
               fullWidth
               size="small"
             >
@@ -3030,6 +1214,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
         </Box>
       </Modal>
 
+      {/* ── Modal: perfil del cliente ── */}
       <Modal open={openProfile} onClose={handleCloseProfile}>
         <Box sx={profileModalStyle}>
           {clientSelected && (
@@ -3046,6 +1231,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                 {clientSelected.name} {clientSelected.lastName}
               </Typography>
 
+              {/* Información personal */}
               <Accordion defaultExpanded>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -3080,6 +1266,14 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                     </Grid>
                     <Grid item xs={12}>
                       <Typography variant="body2">
+                        <strong>Proporción:</strong>{" "}
+                        {PROPORCIONES.find(
+                          (p) => p.factor === clientSelected.proporcion,
+                        )?.label || "Mes completo"}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="body2">
                         <strong>Fecha de inicio:</strong>{" "}
                         {clientSelected.fechaInicio
                           ? new Date(
@@ -3092,6 +1286,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                 </AccordionDetails>
               </Accordion>
 
+              {/* Estado financiero */}
               <Accordion defaultExpanded>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -3103,6 +1298,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={1}>
+                    {/* Badge de estado */}
                     <Grid item xs={12}>
                       <Box
                         sx={{
@@ -3121,13 +1317,13 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                           variant="h6"
                           sx={{
                             fontWeight: "bold",
+                            textAlign: "center",
                             color:
                               clientSelected.estado === "Deudor"
                                 ? "#c62828"
                                 : clientSelected.estado === "Al día"
                                   ? "#2e7d32"
                                   : "#ef6c00",
-                            textAlign: "center",
                           }}
                         >
                           {clientSelected.estado}
@@ -3135,6 +1331,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                       </Box>
                     </Grid>
 
+                    {/* Desglose de deuda */}
                     {((clientSelected.debt || 0) > 0 ||
                       (clientSelected.deudaAnterior || 0) > 0) && (
                       <Grid item xs={12}>
@@ -3158,8 +1355,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                               gap: 0.5,
                             }}
                           >
-                            <HistoryIcon fontSize="small" />
-                            Desglose de Deuda:
+                            <HistoryIcon fontSize="small" /> Desglose de Deuda:
                           </Typography>
                           {(clientSelected.deudaAnterior || 0) > 0 && (
                             <Box sx={{ mb: 1, pl: 1 }}>
@@ -3202,6 +1398,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                       </Grid>
                     )}
 
+                    {/* Saldo a favor */}
                     {clientSelected.saldoFavor > 0 && (
                       <Grid item xs={12}>
                         <Box
@@ -3285,6 +1482,7 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                 </AccordionDetails>
               </Accordion>
 
+              {/* Horarios */}
               <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -3309,17 +1507,15 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                         <Box
                           sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
                         >
-                          {getScheduleSummary(clientSchedules).map(
-                            (summary, index) => (
-                              <Chip
-                                key={index}
-                                label={`${summary.day}: ${summary.hours.join(", ")}`}
-                                variant="outlined"
-                                size="small"
-                                sx={{ fontSize: "0.7rem" }}
-                              />
-                            ),
-                          )}
+                          {getScheduleSummary(clientSchedules).map((s, i) => (
+                            <Chip
+                              key={i}
+                              label={`${s.day}: ${s.hours.join(", ")}`}
+                              variant="outlined"
+                              size="small"
+                              sx={{ fontSize: "0.7rem" }}
+                            />
+                          ))}
                         </Box>
                       </Box>
 
@@ -3332,38 +1528,33 @@ const ClientsList = ({ clients = [], setIsChange }) => {
                       <Box sx={{ maxHeight: 150, overflow: "auto" }}>
                         {clientSchedules
                           .filter(
-                            (schedule) =>
-                              new Date(schedule.date) >=
+                            (s) =>
+                              new Date(s.date) >=
                               new Date().setHours(0, 0, 0, 0),
                           )
                           .slice(0, 5)
-                          .map((schedule, index) => (
+                          .map((s, i) => (
                             <Box
-                              key={index}
+                              key={i}
                               sx={{
                                 display: "flex",
                                 justifyContent: "space-between",
                                 alignItems: "center",
                                 p: 0.5,
                                 mb: 0.5,
-                                bgcolor: schedule.attended
+                                bgcolor: s.attended
                                   ? "success.light"
                                   : "grey.100",
                                 borderRadius: 1,
-                                fontSize: "0.75rem",
                               }}
                             >
-                              <Box>
-                                <Typography variant="caption">
-                                  {getDayName(schedule.date)}{" "}
-                                  {formatDate(schedule.date)} - {schedule.hour}
-                                </Typography>
-                              </Box>
+                              <Typography variant="caption">
+                                {getDayName(s.date)} {formatDate(s.date)} -{" "}
+                                {s.hour}
+                              </Typography>
                               <Chip
-                                label={schedule.attended ? "✓" : "○"}
-                                color={
-                                  schedule.attended ? "success" : "default"
-                                }
+                                label={s.attended ? "✓" : "○"}
+                                color={s.attended ? "success" : "default"}
                                 size="small"
                                 sx={{ fontSize: "0.7rem", height: 18 }}
                               />
@@ -3423,11 +1614,18 @@ const ClientsList = ({ clients = [], setIsChange }) => {
       <ActivityPricesManager
         open={openPricesManager}
         onClose={handleClosePricesManager}
-        onActivityUpdate={handleActivityUpdate}
+        onActivityUpdate={() => {
+          reloadActivities();
+          setIsChange(true);
+        }}
       />
+
       <ScheduleAssignmentModal
         open={openScheduleAssignment}
-        onClose={handleCloseScheduleAssignment}
+        onClose={() => {
+          setOpenScheduleAssignment(false);
+          setClientForSchedule(null);
+        }}
         client={clientForSchedule}
         onSuccess={() => setIsChange(true)}
       />
